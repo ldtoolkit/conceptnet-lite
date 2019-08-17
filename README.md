@@ -1,2 +1,2 @@
 # conceptnet-lite
-Python library to work with ConceptNet without the need of PostgreSQL
+Python library to work with ConceptNet offline without the need of PostgreSQL
