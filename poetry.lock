@@ -1,0 +1,41 @@
+[[package]]
+category = "main"
+description = "A backport of the dataclasses module for Python 3.6"
+name = "dataclasses"
+optional = false
+python-versions = "*"
+version = "0.6"
+
+[[package]]
+category = "main"
+description = "sqlite based graph database for storing native python objects and their relationships to each other"
+name = "graphdb"
+optional = false
+python-versions = "*"
+version = "2019.2.18"
+
+[[package]]
+category = "main"
+description = "A Smart Download Manager for Python"
+name = "pysmartdl"
+optional = false
+python-versions = "*"
+version = "1.3.2"
+
+[[package]]
+category = "main"
+description = "Fast, Extensible Progress Meter"
+name = "tqdm"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+version = "4.33.0"
+
+[metadata]
+content-hash = "08cdd58f4ee89a6dbd31f637cdffa048c8d7f233f7b88a3fa4240b929ec75cca"
+python-versions = "^3.6"
+
+[metadata.hashes]
+dataclasses = ["454a69d788c7fda44efd71e259be79577822f5e3f53f029a22d08004e951dc9f", "6988bd2b895eef432d562370bb707d540f32f7360ab13da45340101bc2307d84"]
+graphdb = ["a78ffac52d72ee97e44778dd44f2ecc1c9ec692f93dc85a40110207bea3b99b6"]
+pysmartdl = ["06a161b58b4003c1d4c01a3390a1f338633af31ccb4ac198c9fa43d3c4aa9dfd", "9a96deb3ee4f4ab2279b22eb908d506f57215e1fbad290d540adcebff187a52c"]
+tqdm = ["1dc82f87a8726602fa7177a091b5e8691d6523138a8f7acd08e58088f51e389f", "47220a4f2aeebbc74b0ab317584264ea44c745e1fd5ff316b675cd0aff8afad8"]
