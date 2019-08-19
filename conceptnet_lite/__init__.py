@@ -51,6 +51,14 @@ class RelationType(Enum):
     EXTERNAL_URL = 'external_url'
 
 
+def _create_related_property(relation_type: RelationType) -> property(List['Concept']):
+    @property
+    def related(self) -> List['Concept']:
+        return self.get_related(relation_type=relation_type)
+
+    return related
+
+
 class Concept:
     def __init__(self, conceptnet: 'ConceptNet', url: str):
         self._conceptnet = conceptnet
@@ -59,9 +67,43 @@ class Concept:
     def __str__(self):
         return self._url
 
-    @property
-    def antonyms(self) -> List['Concept']:
-        return self._conceptnet.find(self, RelationType.ANTONYM)
+    def get_related(self, relation_type: RelationType) -> List['Concept']:
+        return self._conceptnet.find(self, relation_type)
+
+    related_to = _create_related_property(RelationType.RELATED_TO)
+    form_of = _create_related_property(RelationType.FORM_OF)
+    is_a = _create_related_property(RelationType.IS_A)
+    part_of = _create_related_property(RelationType.PART_OF)
+    has_a = _create_related_property(RelationType.HAS_A)
+    used_for = _create_related_property(RelationType.USED_FOR)
+    capable_of = _create_related_property(RelationType.CAPABLE_OF)
+    at_location = _create_related_property(RelationType.AT_LOCATION)
+    causes = _create_related_property(RelationType.CAUSES)
+    has_subevents = _create_related_property(RelationType.HAS_SUBEVENT)
+    has_first_subevent = _create_related_property(RelationType.HAS_FIRST_SUBEVENT)
+    has_last_subevent = _create_related_property(RelationType.HAS_LAST_SUBEVENT)
+    has_prerequisites = _create_related_property(RelationType.HAS_PREREQUISITE)
+    has_properties = _create_related_property(RelationType.HAS_PROPERTY)
+    motivated_by_goals = _create_related_property(RelationType.MOTIVATED_BY_GOAL)
+    obstructed_by = _create_related_property(RelationType.OBSTRUCTED_BY)
+    desires = _create_related_property(RelationType.DESIRES)
+    created_by = _create_related_property(RelationType.CREATED_BY)
+    synonyms = _create_related_property(RelationType.SYNONYM)
+    antonyms = _create_related_property(RelationType.ANTONYM)
+    distinct_from = _create_related_property(RelationType.DISTINCT_FROM)
+    derived_from = _create_related_property(RelationType.DERIVED_FROM)
+    symbol_of = _create_related_property(RelationType.SYMBOL_OF)
+    defined_as = _create_related_property(RelationType.DEFINED_AS)
+    manner_of = _create_related_property(RelationType.MANNER_OF)
+    located_near = _create_related_property(RelationType.LOCATED_NEAR)
+    has_contexts = _create_related_property(RelationType.HAS_CONTEXT)
+    similar_to = _create_related_property(RelationType.SIMILAR_TO)
+    etymologically_related_to = _create_related_property(RelationType.ETYMOLOGICALLY_RELATED_TO)
+    etymologically_derived_from = _create_related_property(RelationType.ETYMOLOGICALLY_DERIVED_FROM)
+    causes_desires = _create_related_property(RelationType.CAUSES_DESIRE)
+    made_of = _create_related_property(RelationType.MADE_OF)
+    receives_actions = _create_related_property(RelationType.RECEIVES_ACTION)
+    external_urls = _create_related_property(RelationType.EXTERNAL_URL)
 
 
 class ConceptNet:
