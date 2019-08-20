@@ -6,10 +6,8 @@ class GraphDb(SQLiteGraphDB):
         autocommit = self._autocommit
         self._autocommit = False
 
-        i = 1
         for relation in relations:
             self.store_relation(*relation)
-            i += 1
 
         self._autocommit = autocommit
         self.autocommit()
