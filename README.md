@@ -68,11 +68,13 @@ with cn.query():
         print("  Edge URI:", e.uri)
         print(e.relation.name, e.start.label.text, e.end.label.text, e.etc)
 ```
-**e.relation.name**: the name of ConceptNet relation. Full list [here](https://github.com/commonsense/conceptnet5/wiki/Relations).
-**e.start.label.text, e.end.label.text**: the source and the target concepts in the edge
-**e.etc**: the ConceptNet [metadata](https://github.com/commonsense/conceptnet5/wiki/Edges) dictionary contains the source dataset, sources, weight, and license. For example, the introvert:extrovert edge for English contains the following metadata:
+* **e.relation.name**: the name of ConceptNet relation. Full list [here](https://github.com/commonsense/conceptnet5/wiki/Relations).
 
-```yaml
+* **e.start.label.text, e.end.label.text**: the source and the target concepts in the edge
+
+* **e.etc**: the ConceptNet [metadata](https://github.com/commonsense/conceptnet5/wiki/Edges) dictionary contains the source dataset, sources, weight, and license. For example, the introvert:extrovert edge for English contains the following metadata:
+
+```
 {
 	'dataset': '/d/wiktionary/en',
 	'license': 'cc:by-sa/4.0',
