@@ -33,10 +33,10 @@ with cn.query():
     cat_concepts = Label.get(text='cat').concepts  #
     for c in cat_concepts:
         print("    Concept URI:", c.uri)
-        print("    Concept text:", c.label.text) 
+        print("    Concept text:", c.text) 
 ```
 
-`concept.uri` provides access to ConceptNet URIs, as described [here](https://github.com/commonsense/conceptnet5/wiki/URI-hierarchy). You can also retrieve only the text of the entry by `concept.label.text`.
+`concept.uri` provides access to ConceptNet URIs, as described [here](https://github.com/commonsense/conceptnet5/wiki/URI-hierarchy). You can also retrieve only the text of the entry by `concept.text`.
 
 ## Working with languages
 
@@ -48,7 +48,7 @@ with cn.query():
     cat_concepts = Label.get(text='cat', language=english).concepts  #
     for c in cat_concepts:
         print("    Concept URI:", c.uri)
-        print("    Concept text:", c.label.text) 
+        print("    Concept text:", c.text) 
         print("    Concept language:", c.language.name)
 ```
 
@@ -66,11 +66,11 @@ with cn.query():
     for e in cn.edges_between(introvert_concepts, extrovert_concepts,
     two_way=False):
         print("  Edge URI:", e.uri)
-        print(e.relation.name, e.start.label.text, e.end.label.text, e.etc)
+        print(e.relation.name, e.start.text, e.end.text, e.etc)
 ```
 * **e.relation.name**: the name of ConceptNet relation. Full list [here](https://github.com/commonsense/conceptnet5/wiki/Relations).
 
-* **e.start.label.text, e.end.label.text**: the source and the target concepts in the edge
+* **e.start.text, e.end.text**: the source and the target concepts in the edge
 
 * **e.etc**: the ConceptNet [metadata](https://github.com/commonsense/conceptnet5/wiki/Edges) dictionary contains the source dataset, sources, weight, and license. For example, the introvert:extrovert edge for English contains the following metadata:
 
@@ -98,7 +98,7 @@ with cn.query():
     english = Language.get(name='en')
     for e in cn.edges_for(Label.get(text='introvert', language=english, same_language=True).concepts):
         print("  Edge URI:", e.uri)
-        print(e.relation.name, e.start.label.text, e.end.label.text, e.etc)
+        print(e.relation.name, e.start.text, e.end.text, e.etc)
 ```
 
 The only difference is that since the other concepts are not specified, it is possible to get edges to concepts in languages other than the source concept language. By default this option is off, but if you need to retrieve, say, Chinese antonyms of an English word, you can set `same_language=False`.
@@ -112,19 +112,19 @@ with cn.query():
     english = Language.get(name='en')
     cat_concepts = Label.get(text='introvert', language=english).concepts  #
     for c in cat_concepts:
-        print("    Concept text:", c.label.text) # shall we also contract this to c.text?
+        print("    Concept text:", c.text) # shall we also contract this to c.text?
         if c.edges_out:
             print("      Edges out:")
             for e in c.edges_out:
                 print("        Edge URI:", e.uri)
                 print("        Relation:", e.relation.name)
-                print("        End:", e.end.label.text)
+                print("        End:", e.end.text)
         if c.edges_in:
             print("      Edges in:")
             for e in c.edges_in:
                 print("        Edge URI:", e.uri)
                 print("        Relation:", e.relation.name)
-                print("        End:", e.end.label.text)
+                print("        End:", e.end.text)
 ```
 
 
