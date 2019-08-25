@@ -1,5 +1,24 @@
 [[package]]
 category = "main"
+description = "Labels and compares human languages in a standardized way"
+name = "langcodes"
+optional = false
+python-versions = "*"
+version = "1.4.1"
+
+[package.dependencies]
+marisa-trie = "*"
+
+[[package]]
+category = "main"
+description = "Static memory-efficient and fast Trie-like structures for Python."
+name = "marisa-trie"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "0.7.5"
+
+[[package]]
+category = "main"
 description = "Pony Object-Relational Mapper"
 name = "pony"
 optional = false
@@ -15,9 +34,11 @@ python-versions = "*"
 version = "1.3.2"
 
 [metadata]
-content-hash = "05b63b52b99048adc1ce8626b586ffa2b97818a95ac2f459ce1e52bbb516ea4e"
+content-hash = "90e7382647cc45e4fb9cb7af13d84d5e22ad65dd4215504fba8d52fb1917df56"
 python-versions = "^3.6"
 
 [metadata.hashes]
+langcodes = ["22cff103b6c0f3c9907d9a51c2d634177a50a189672ad16d959a3e2cd48eadab"]
+marisa-trie = ["4419abb6b603c97e863fad994abe57ed247fb12491f4bbacb2d762bd2e8958b6", "c73bc25d868e8c4ea7aa7f1e19892db07bba2463351269b05340ccfa06eb2baf"]
 pony = ["55bb9d4d12029d8c2bbbc7a284970e72225035db7e6370c0a15ec93d1886fe88"]
 pysmartdl = ["06a161b58b4003c1d4c01a3390a1f338633af31ccb4ac198c9fa43d3c4aa9dfd", "9a96deb3ee4f4ab2279b22eb908d506f57215e1fbad290d540adcebff187a52c"]

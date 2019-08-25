@@ -8,11 +8,11 @@ package_data = \
 {'': ['*']}
 
 install_requires = \
-['pony>=0.7.10,<0.8.0', 'pySmartDL>=1.3,<2.0']
+['langcodes>=1.4,<2.0', 'pony>=0.7.10,<0.8.0', 'pySmartDL>=1.3,<2.0']
 
 setup_kwargs = {
     'name': 'conceptnet-lite',
-    'version': '0.1.3',
+    'version': '0.1.4',
     'description': 'Python library to work with ConceptNet offline without the need of PostgreSQL',
     'long_description': '# conceptnet-lite\nPython library to work with ConceptNet offline without the need for PostgreSQL\n',
     'author': 'Roman Inflianskas',
