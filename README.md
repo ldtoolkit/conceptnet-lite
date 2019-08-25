@@ -40,7 +40,7 @@ with cn.query():
 
 ## Working with languages
 
-You can limit the languages to search for matches. Label.get() takes an optional `language` attribute that is expected to be a language object created by the [langcodes library](https://github.com/LuminosoInsight/langcodes).
+You can limit the languages to search for matches. Label.get() takes an optional `language` attribute that is expected to be an instance `Language`, which in turn is created by calling `Language.get()` with `name` argument that is a language code string or a language object created by the [langcodes library](https://github.com/LuminosoInsight/langcodes). List of available languages and their codes are described [here](https://github.com/commonsense/conceptnet5/wiki/Languages).
 
 ```python
 with cn.query():
