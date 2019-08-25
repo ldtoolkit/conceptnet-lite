@@ -72,11 +72,19 @@ with cn.query():
 **e.start.label.text, e.end.label.text**: the source and the target concepts in the edge
 **e.etc**: the ConceptNet [metadata](https://github.com/commonsense/conceptnet5/wiki/Edges) dictionary contains the source dataset, sources, weight, and license. For example, the introvert:extrovert edge for English contains the following metadata:
 
-```json
-{'dataset': '/d/wiktionary/en', 
-'license': 'cc:by-sa/4.0', 
-'sources': [{'contributor': '/s/resource/wiktionary/en', 'process': '/s/process/wikiparsec/2'}, {'contributor': '/s/resource/wiktionary/fr', 'process': '/s/process/wikiparsec/2'}], 
-'weight': 2.0}
+```yaml
+{
+	'dataset': '/d/wiktionary/en',
+	'license': 'cc:by-sa/4.0',
+	'sources': [{
+		'contributor': '/s/resource/wiktionary/en',
+		'process': '/s/process/wikiparsec/2'
+	}, {
+		'contributor': '/s/resource/wiktionary/fr',
+		'process': '/s/process/wikiparsec/2'
+	}],
+	'weight': 2.0
+}
 ```
 
 ## Accessing all relations for a given concept
@@ -143,3 +151,4 @@ Todo:
 
 - [ ] add database file link 
 - [ ] describe how to build the database
+- [ ] add sample outputs
