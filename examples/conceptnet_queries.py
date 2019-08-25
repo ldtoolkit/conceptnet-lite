@@ -26,7 +26,7 @@ with cn.query():
                     print("        Relation:", e.relation.name)
                     print("        End:", e.end.uri)
 
-    print("All relations between 'рай' и 'ад':")
+    print("All edges between 'рай' и 'ад':")
     heaven_concepts = Label.get(text='рай').concepts
     hell_concepts = Label.get(text='ад').concepts
     for e in cn.edges_between(heaven_concepts, hell_concepts, two_way=True):
