@@ -12,7 +12,7 @@ install_requires = \
 
 setup_kwargs = {
     'name': 'conceptnet-lite',
-    'version': '0.1.5',
+    'version': '0.1.6',
     'description': 'Python library to work with ConceptNet offline without the need of PostgreSQL',
     'long_description': '# conceptnet-lite\nPython library to work with ConceptNet offline without the need for PostgreSQL\n',
     'author': 'Roman Inflianskas',

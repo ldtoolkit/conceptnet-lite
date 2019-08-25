@@ -129,15 +129,15 @@ class ConceptNet:
     def edges_from(self, start_concepts, same_language: bool = True):
         return self.select(
             e for e in Edge
-            if e.start in start_concepts and
-            not same_language or e.start.label.language == e.end.label.language
+            if (e.start in start_concepts) and
+            (not same_language or e.start.label.language == e.end.label.language)
         )
 
     def edges_to(self, end_concepts, same_language: bool = True):
         return self.select(
             e for e in Edge
-            if e.end in end_concepts and
-            not same_language or e.start.label.language == e.end.label.language
+            if (e.end in end_concepts) and
+            (not same_language or e.start.label.language == e.end.label.language)
         )
 
     def edges_for(self, concepts, same_language: bool = True):
