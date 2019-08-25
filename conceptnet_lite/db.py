@@ -1,4 +1,3 @@
-from copy import copy
 from enum import Enum
 
 import langcodes
@@ -98,6 +97,10 @@ class Concept(db.Entity):
     @property
     def language(self) -> 'Language':
         return self.label.language
+
+    @property
+    def text(self) -> str:
+        return self.label.text
 
 
 class Edge(db.Entity):
