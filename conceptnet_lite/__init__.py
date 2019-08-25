@@ -101,24 +101,68 @@ class ConceptNet:
         def extract_relation_name(uri: str) -> str:
             return to_snake_case(uri.rpartition('/')[-1])
 
-        def get_or_create(entity_cls: Type[db.Entity], **kwargs):
-            return entity_cls.get(**kwargs) or entity_cls(**kwargs)
+        def get_or_create_relation() -> int:
+            nonlocal new_relation_id
+            relation_name = RelationName(extract_relation_name(relation_uri))
+            result_id = relations.get(relation_name) or new_relation_id
+            if result_id == new_relation_id:
+                cursor.execute('insert into Relation (name) values (?)', [relation_name.name])
+                relations[relation_name] = result_id
+                new_relation_id += 1
+            return result_id
 
-        def get_or_create_concept(uri: str) -> Concept:
+        def get_or_create_language(name: str) -> int:
+            nonlocal new_language_id
+            result_id = languages.get(name) or new_language_id
+            if result_id == new_language_id:
+                cursor.execute('insert into Language (name) values (?)', (name, ))
+                languages[name] = result_id
+                new_language_id += 1
+            return result_id
+
+        def get_or_create_label(text: str, language_id: int) -> int:
+            params = (text, language_id)
+            cursor.execute('select id from Label where text = ? and language = ?', params)
+            query_result = cursor.fetchone()
+            if query_result:
+                return query_result[0]
+            else:
+                cursor.execute('insert into Label (text, language) values (?, ?)', params)
+                return cursor.lastrowid
+
+        def get_or_create_concept(uri: str) -> int:
             split_url = uri.split('/', maxsplit=4)
-            language = get_or_create(Language, name=split_url[2])
-            label = get_or_create(Label, text=split_url[3], language=language)
-            concept = get_or_create(Concept, label=label, sense_label=('' if len(split_url) == 4 else split_url[4]))
-            return concept
+            language_id = get_or_create_language(name=split_url[2])
+            label_id = get_or_create_label(text=split_url[3], language_id=language_id)
+            sense_label = '' if len(split_url) == 4 else split_url[4]
+            params = (label_id, sense_label)
+            cursor.execute('select id from Concept where label = ? and sense_label = ?', params)
+            query_result = cursor.fetchone()
+            if query_result:
+                return query_result[0]
+            else:
+                cursor.execute('insert into Concept (label, sense_label) values (?, ?)', params)
+                return cursor.lastrowid
+
+        def create_edge():
+            relation_id = get_or_create_relation()
+            start_id = get_or_create_concept(uri=start_uri)
+            end_id = get_or_create_concept(uri=end_uri)
+
+            params = (relation_id, start_id, end_id, edge_etc_json)
+            cursor.execute('insert into Edge (relation, start, end, etc) values (?, ?, ?, ?)', params)
 
         print("Load dump to database")
-        for relation_name, start_uri, end_uri, edge_etc_json in (
+
+        relations, new_relation_id = {}, 1
+        languages, new_language_id = {}, 1
+
+        connection = db.get_connection()
+        cursor = connection.cursor()
+
+        for relation_uri, start_uri, end_uri, edge_etc_json in (
                 edges_from_dump_by_parts_generator(path=dump_path, count=edges_count)):
-            relation = get_or_create(Relation, name=RelationName(extract_relation_name(relation_name)))
-            start = get_or_create_concept(uri=start_uri)
-            end = get_or_create_concept(uri=end_uri)
-            edge = get_or_create(Edge, relation=relation, start=start, end=end)
-            edge.etc = json.loads(edge_etc_json)
+            create_edge()
 
         if delete_dump:
             dump_path.unlink()
