@@ -13,6 +13,7 @@ with cn.query():
         print("  Label:", l.text)
         for c in l.concepts:
             print("    Concept URI:", c.uri)
+            print("    Concept language:", c.language.name)
             if c.edges_out:
                 print("      Edges out:")
                 for e in c.edges_out:

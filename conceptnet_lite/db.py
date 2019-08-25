@@ -95,6 +95,10 @@ class Concept(db.Entity):
         ending = f'/{self.sense_label}' if self.sense_label else ''
         return f'/c/{self.label.language.name}/{self.label.text}{ending}'
 
+    @property
+    def language(self) -> 'Language':
+        return self.label.language
+
 
 class Edge(db.Entity):
     id = orm.PrimaryKey(int, auto=True)
