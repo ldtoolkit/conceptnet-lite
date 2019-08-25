@@ -126,14 +126,26 @@ class ConceptNet:
     query = staticmethod(orm.db_session)
     select = staticmethod(orm.select)
 
-    def edges_from(self, start_concepts):
-        return self.select(e for e in Edge if e.start in start_concepts)
+    def edges_from(self, start_concepts, same_language: bool = True):
+        return self.select(
+            e for e in Edge
+            if e.start in start_concepts and
+            not same_language or e.start.label.language == e.end.label.language
+        )
 
-    def edges_to(self, end_concepts):
-        return self.select(e for e in Edge if e.end in end_concepts)
+    def edges_to(self, end_concepts, same_language: bool = True):
+        return self.select(
+            e for e in Edge
+            if e.end in end_concepts and
+            not same_language or e.start.label.language == e.end.label.language
+        )
 
-    def edges_for(self, concepts):
-        return self.select(e for e in Edge if e.start in concepts or e.end in concepts)
+    def edges_for(self, concepts, same_language: bool = True):
+        return self.select(
+            e for e in Edge
+            if (e.start in concepts or e.end in concepts) and
+            (not same_language or e.start.label.language == e.end.label.language)
+        )
 
     def edges_between(self, start_concepts, end_concepts, two_way: bool = False):
         if two_way:
