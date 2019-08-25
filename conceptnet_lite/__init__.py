@@ -1,109 +1,22 @@
 import csv
 import gzip
+import json
 import shutil
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Generator, Tuple, Optional, List
+from typing import Generator, Tuple, Optional, Type
 
+import langcodes
+from pony import orm
 from pySmartDL import SmartDL
 
-from conceptnet_lite.graphdb_wrapper import GraphDb
+from conceptnet_lite.db import db, EnumConverter, LanguageConverter, Concept, Language, Label, Relation, RelationName
+from conceptnet_lite.db import Edge
 from conceptnet_lite.utils import PathOrStr, to_snake_case
 
 
 CONCEPTNET_DOWNLOAD_URL = 'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz'
-
-
-class RelationType(Enum):
-    RELATED_TO = 'related_to'
-    FORM_OF = 'form_of'
-    IS_A = 'is_a'
-    PART_OF = 'part_of'
-    HAS_A = 'has_a'
-    USED_FOR = 'used_for'
-    CAPABLE_OF = 'capable_of'
-    AT_LOCATION = 'at_location'
-    CAUSES = 'causes'
-    HAS_SUBEVENT = 'has_subevent'
-    HAS_FIRST_SUBEVENT = 'has_first_subevent'
-    HAS_LAST_SUBEVENT = 'has_last_subevent'
-    HAS_PREREQUISITE = 'has_prerequisite'
-    HAS_PROPERTY = 'has_property'
-    MOTIVATED_BY_GOAL = 'motivated_by_goal'
-    OBSTRUCTED_BY = 'obstructed_by'
-    DESIRES = 'desires'
-    CREATED_BY = 'created_by'
-    SYNONYM = 'synonym'
-    ANTONYM = 'antonym'
-    DISTINCT_FROM = 'distinct_from'
-    DERIVED_FROM = 'derived_from'
-    SYMBOL_OF = 'symbol_of'
-    DEFINED_AS = 'defined_as'
-    MANNER_OF = 'manner_of'
-    LOCATED_NEAR = 'located_near'
-    HAS_CONTEXT = 'has_context'
-    SIMILAR_TO = 'similar_to'
-    ETYMOLOGICALLY_RELATED_TO = 'etymologically_related_to'
-    ETYMOLOGICALLY_DERIVED_FROM = 'etymologically_derived_from'
-    CAUSES_DESIRE = 'causes_desire'
-    MADE_OF = 'made_of'
-    RECEIVES_ACTION = 'receives_action'
-    EXTERNAL_URL = 'external_url'
-
-
-def _create_related_property(relation_type: RelationType) -> property(List['Concept']):
-    @property
-    def related(self) -> List['Concept']:
-        return self.get_related(relation_type=relation_type)
-
-    return related
-
-
-class Concept:
-    def __init__(self, conceptnet: 'ConceptNet', url: str):
-        self._conceptnet = conceptnet
-        self._url = url
-
-    def __str__(self):
-        return self._url
-
-    def get_related(self, relation_type: RelationType) -> List['Concept']:
-        return self._conceptnet.find(self, relation_type)
-
-    related_to = _create_related_property(RelationType.RELATED_TO)
-    form_of = _create_related_property(RelationType.FORM_OF)
-    is_a = _create_related_property(RelationType.IS_A)
-    part_of = _create_related_property(RelationType.PART_OF)
-    has_a = _create_related_property(RelationType.HAS_A)
-    used_for = _create_related_property(RelationType.USED_FOR)
-    capable_of = _create_related_property(RelationType.CAPABLE_OF)
-    at_location = _create_related_property(RelationType.AT_LOCATION)
-    causes = _create_related_property(RelationType.CAUSES)
-    has_subevents = _create_related_property(RelationType.HAS_SUBEVENT)
-    has_first_subevent = _create_related_property(RelationType.HAS_FIRST_SUBEVENT)
-    has_last_subevent = _create_related_property(RelationType.HAS_LAST_SUBEVENT)
-    has_prerequisites = _create_related_property(RelationType.HAS_PREREQUISITE)
-    has_properties = _create_related_property(RelationType.HAS_PROPERTY)
-    motivated_by_goals = _create_related_property(RelationType.MOTIVATED_BY_GOAL)
-    obstructed_by = _create_related_property(RelationType.OBSTRUCTED_BY)
-    desires = _create_related_property(RelationType.DESIRES)
-    created_by = _create_related_property(RelationType.CREATED_BY)
-    synonyms = _create_related_property(RelationType.SYNONYM)
-    antonyms = _create_related_property(RelationType.ANTONYM)
-    distinct_from = _create_related_property(RelationType.DISTINCT_FROM)
-    derived_from = _create_related_property(RelationType.DERIVED_FROM)
-    symbol_of = _create_related_property(RelationType.SYMBOL_OF)
-    defined_as = _create_related_property(RelationType.DEFINED_AS)
-    manner_of = _create_related_property(RelationType.MANNER_OF)
-    located_near = _create_related_property(RelationType.LOCATED_NEAR)
-    has_contexts = _create_related_property(RelationType.HAS_CONTEXT)
-    similar_to = _create_related_property(RelationType.SIMILAR_TO)
-    etymologically_related_to = _create_related_property(RelationType.ETYMOLOGICALLY_RELATED_TO)
-    etymologically_derived_from = _create_related_property(RelationType.ETYMOLOGICALLY_DERIVED_FROM)
-    causes_desires = _create_related_property(RelationType.CAUSES_DESIRE)
-    made_of = _create_related_property(RelationType.MADE_OF)
-    receives_actions = _create_related_property(RelationType.RECEIVES_ACTION)
-    external_urls = _create_related_property(RelationType.EXTERNAL_URL)
 
 
 class ConceptNet:
@@ -115,14 +28,19 @@ class ConceptNet:
             download_url: str = CONCEPTNET_DOWNLOAD_URL,
             download_progress_bar: bool = True,
             load_dump_to_db: bool = True,
-            load_dump_relations_count: Optional[int] = None,
+            load_dump_edges_count: Optional[int] = None,
             delete_compressed_dump: bool = True,
             delete_dump: bool = True,
     ):
-        path = Path(path).expanduser()
-        dump_dir_path = Path(dump_dir_path).expanduser()
+        def open_db(create_db: bool = False):
+            db.bind(provider='sqlite', filename=str(self._db_path), create_db=create_db)
+            db.provider.converter_classes += [(Enum, EnumConverter), (langcodes.Language, LanguageConverter)]
+            db.generate_mapping(create_tables=True)
 
-        if load_dump_to_db and not path.is_file():
+        self._db_path = Path(path).expanduser().resolve()
+        dump_dir_path = Path(dump_dir_path).expanduser().resolve()
+
+        if load_dump_to_db and not self._db_path.is_file():
             dump_path = dump_dir_path / Path(CONCEPTNET_DOWNLOAD_URL.rpartition('/')[-1]).with_suffix('')
             if download_missing_dump and not dump_path.is_file():
                 self.download_and_unpack_dump(
@@ -131,27 +49,14 @@ class ConceptNet:
                     progress_bar=download_progress_bar,
                     delete_compressed_dump=delete_compressed_dump,
                 )
-            self.load_dump_to_db(
-                dump_path=dump_path,
-                db_path=path,
-                relations_count=load_dump_relations_count,
-                delete_dump=delete_dump,
-            )
-        self._db = GraphDb(path=str(path))
 
-    @staticmethod
-    def _relations_from_dump_generator(
-            path: PathOrStr,
-            count: Optional[int] = None,
-    ) -> Generator[Tuple[str, str, str], None, None]:
-        i = 0
-        with open(str(path), newline='') as f:
-            reader = csv.reader(f, delimiter='\t')
-            for row in reader:
-                yield row[2], _extract_relation_name(row[1]), row[3]
-                i += 1
-                if i == count:
-                    break
+            open_db(create_db=True)
+            dump_loading_start = datetime.now()
+            self.load_dump_to_db(dump_path=dump_path, edges_count=load_dump_edges_count, delete_dump=delete_dump)
+            dump_loading_end = datetime.now()
+            print("Time for loading dump:", dump_loading_end - dump_loading_start)
+        else:
+            open_db()
 
     @classmethod
     def download_and_unpack_dump(
@@ -175,31 +80,66 @@ class ConceptNet:
         if delete_compressed_dump:
             compressed_dump_path.unlink()
 
+    @orm.db_session
     def load_dump_to_db(
             self,
             dump_path: PathOrStr,
-            db_path: PathOrStr,
-            relations_count: Optional[int] = None,
+            edges_count: Optional[int] = None,
             delete_dump: bool = True,
     ):
+        def edges_from_dump_by_parts_generator(
+                path: PathOrStr,
+                count: Optional[int] = None,
+        ) -> Generator[Tuple[str, str, str, str], None, None]:
+            with open(str(path), newline='') as f:
+                reader = csv.reader(f, delimiter='\t')
+                for i, row in enumerate(reader):
+                    yield row[1:5]
+                    if i == count:
+                        break
+
+        def extract_relation_name(uri: str) -> str:
+            return to_snake_case(uri.rpartition('/')[-1])
+
+        def get_or_create(entity_cls: Type[db.Entity], **kwargs):
+            return entity_cls.get(**kwargs) or entity_cls(**kwargs)
+
+        def get_or_create_concept(uri: str) -> Concept:
+            split_url = uri.split('/', maxsplit=4)
+            language = get_or_create(Language, name=split_url[2])
+            label = get_or_create(Label, text=split_url[3], language=language)
+            concept = get_or_create(Concept, label=label, sense_label=('' if len(split_url) == 4 else split_url[4]))
+            return concept
+
         print("Load dump to database")
-        self._db = GraphDb(path=str(db_path))
-        relations_generator = self._relations_from_dump_generator(path=dump_path, count=relations_count)
-        self._db.store_relations(relations=relations_generator)
-        self._db.close()
+        for relation_name, start_uri, end_uri, edge_etc_json in (
+                edges_from_dump_by_parts_generator(path=dump_path, count=edges_count)):
+            relation = get_or_create(Relation, name=RelationName(extract_relation_name(relation_name)))
+            start = get_or_create_concept(uri=start_uri)
+            end = get_or_create_concept(uri=end_uri)
+            edge = get_or_create(Edge, relation=relation, start=start, end=end)
+            edge.etc = json.loads(edge_etc_json)
+
         if delete_dump:
             dump_path.unlink()
 
-    def relations_between(self, x: str, y: str) -> List[RelationType]:
-        return [RelationType(relation_type) for relation_type in self._db.relations_between(x, y)]
+    query = staticmethod(orm.db_session)
+    select = staticmethod(orm.select)
 
-    def find(self, source: Concept, relation_type: RelationType) -> List[Concept]:
-        url_list = list(self._db.find(str(source), relation=relation_type.value))
-        return [Concept(self, url) for url in url_list]
+    def edges_from(self, start_concepts):
+        return self.select(e for e in Edge if e.start in start_concepts)
 
-    def __getitem__(self, item: str) -> Concept:
-        return Concept(conceptnet=self, url=self._db[item].to(list)[0])
+    def edges_to(self, end_concepts):
+        return self.select(e for e in Edge if e.end in end_concepts)
 
+    def edges_for(self, concepts):
+        return self.select(e for e in Edge if e.start in concepts or e.end in concepts)
 
-def _extract_relation_name(url: str) -> str:
-    return to_snake_case(url.rpartition('/')[-1])
+    def edges_between(self, start_concepts, end_concepts, two_way: bool = False):
+        if two_way:
+            return self.select(e for e in Edge if (
+                    ((e.start in start_concepts) and (e.end in end_concepts)) or
+                    ((e.start in end_concepts) and (e.end in start_concepts))))
+        else:
+            return self.select(e for e in Edge if (
+                    (e.start in start_concepts) and (e.end in end_concepts)))
