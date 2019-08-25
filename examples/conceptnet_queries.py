@@ -9,7 +9,7 @@ cn = ConceptNet(
 with cn.query():
     print("Traversing Russian:")
     russian = Language.get(name='ru')
-    for l in cn.select(l for l in Label if l.language == russian):
+    for l in russian.labels:
         print("  Label:", l.text)
         for c in l.concepts:
             print("    Concept URI:", c.uri)
