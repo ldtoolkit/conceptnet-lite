@@ -21,6 +21,8 @@ class ConceptNet:
     ):
         path = Path(path).expanduser().resolve()
         try:
+            if not path.is_file():
+                raise OSError(f"Database does not exists: {path}")
             open_db(path=path)
         except OSError as e:
             print(str(e))

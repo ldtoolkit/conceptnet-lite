@@ -11,6 +11,14 @@ marisa-trie = "*"
 
 [[package]]
 category = "main"
+description = "Universal Python binding for the LMDB 'Lightning' Database"
+name = "lmdb"
+optional = false
+python-versions = "*"
+version = "0.97"
+
+[[package]]
+category = "main"
 description = "Static memory-efficient and fast Trie-like structures for Python."
 name = "marisa-trie"
 optional = false
@@ -34,11 +42,12 @@ python-versions = "*"
 version = "1.3.2"
 
 [metadata]
-content-hash = "90e7382647cc45e4fb9cb7af13d84d5e22ad65dd4215504fba8d52fb1917df56"
+content-hash = "46ffa8c6a4780d5d6fe57c04a85c9172ffab7440ecbdb7de4c6fa3ff9d783841"
 python-versions = "^3.6"
 
 [metadata.hashes]
 langcodes = ["22cff103b6c0f3c9907d9a51c2d634177a50a189672ad16d959a3e2cd48eadab"]
+lmdb = ["173d71ade5fd402c7e9ecb0a1d6022c92a7f89c313132ef4e5e561d349b0834b"]
 marisa-trie = ["4419abb6b603c97e863fad994abe57ed247fb12491f4bbacb2d762bd2e8958b6", "c73bc25d868e8c4ea7aa7f1e19892db07bba2463351269b05340ccfa06eb2baf"]
 pony = ["55bb9d4d12029d8c2bbbc7a284970e72225035db7e6370c0a15ec93d1886fe88"]
 pysmartdl = ["06a161b58b4003c1d4c01a3390a1f338633af31ccb4ac198c9fa43d3c4aa9dfd", "9a96deb3ee4f4ab2279b22eb908d506f57215e1fbad290d540adcebff187a52c"]

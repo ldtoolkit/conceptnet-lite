@@ -3,8 +3,6 @@ from conceptnet_lite import ConceptNet, Label, Language
 cn = ConceptNet(
     path='~/conceptnet-lite-data/conceptnet.db',
     dump_dir_path='~/conceptnet-lite-data',
-    load_dump_edges_count=100000,
-    delete_dump=False,
 )
 with cn.query():
     print("Traversing Russian:")
@@ -28,8 +26,8 @@ with cn.query():
                     print("        End:", e.end.uri)
 
     print("All edges between 'рай' и 'ад':")
-    heaven_concepts = Label.get(text='рай').concepts
-    hell_concepts = Label.get(text='ад').concepts
+    heaven_concepts = Label.get(text='рай', language=russian).concepts
+    hell_concepts = Label.get(text='ад', language=russian).concepts
     for e in cn.edges_between(heaven_concepts, hell_concepts, two_way=True):
         print("  Edge URI:", e.uri)
         print("  Relation:", e.relation.name)

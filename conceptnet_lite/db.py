@@ -1,12 +1,13 @@
 import csv
 import gzip
-import json
 import shutil
-from datetime import datetime
+import struct
 from pathlib import Path
-from typing import Optional, Generator, Tuple, Type
+from typing import Optional, Generator, Tuple
+from uuid import uuid4
 
 import langcodes
+import lmdb
 import pony.orm.dbapiprovider
 from pony import orm
 from pySmartDL import SmartDL
@@ -75,7 +76,7 @@ class Relation(db.Entity):
 
     @property
     def uri(self) -> str:
-        return f'/r/{self.name.value}'
+        return f'/r/{self.name}'
 
 
 class Concept(db.Entity):
@@ -119,13 +120,13 @@ class Language(db.Entity):
 
 class Label(db.Entity):
     id = orm.PrimaryKey(int, auto=True)
-    text = orm.Required(str)
+    text = orm.Required(str, index=True)
     language = orm.Required(Language)
     concepts = orm.Set(Concept)
 
 
-def open_db(path: PathOrStr, create_db: bool = False):
-    db.bind(provider='sqlite', filename=str(path), create_db=create_db)
+def open_db(path: PathOrStr):
+    db.bind(provider='sqlite', filename=str(path), create_db=True)
     db.provider.converter_classes.append((langcodes.Language, LanguageConverter))
     db.generate_mapping(create_tables=True)
 
@@ -159,17 +160,15 @@ def unpack_dump(
         compressed_dump_path.unlink()
 
 
-@orm.db_session
 def load_dump_to_db(
     dump_path: PathOrStr,
     edges_count: Optional[int] = None,
     delete_dump: bool = True,
 ):
     def edges_from_dump_by_parts_generator(
-            path: PathOrStr,
             count: Optional[int] = None,
     ) -> Generator[Tuple[str, str, str, str], None, None]:
-        with open(str(path), newline='') as f:
+        with open(str(dump_path), newline='') as f:
             reader = csv.reader(f, delimiter='\t')
             for i, row in enumerate(reader):
                 yield row[1:5]
@@ -177,30 +176,158 @@ def load_dump_to_db(
                     break
 
     def extract_relation_name(uri: str) -> str:
-        return to_snake_case(uri.rpartition('/')[-1])
+        return to_snake_case(uri[3:])
 
-    def get_or_create(entity_cls: Type[db.Entity], **kwargs):
-        return entity_cls.get(**kwargs) or entity_cls(**kwargs)
+    def get_struct_format(length: int) -> str:
+        return f'{length}Q'
 
-    def get_or_create_concept(uri: str) -> Concept:
-        split_url = uri.split('/', maxsplit=4)
-        language = get_or_create(Language, name=split_url[2])
-        label = get_or_create(Label, text=split_url[3], language=language)
-        concept = get_or_create(Concept, label=label, sense_label=('' if len(split_url) == 4 else split_url[4]))
-        return concept
+    def pack_ints(*ints) -> bytes:
+        return struct.pack(get_struct_format(length=len(ints)), *ints)
 
-    dump_loading_start = datetime.now()
-    print("Load dump to database")
-    for relation_name, start_uri, end_uri, edge_etc_json in (
-            edges_from_dump_by_parts_generator(path=dump_path, count=edges_count)):
-        relation = get_or_create(Relation, name=extract_relation_name(relation_name))
-        start = get_or_create_concept(uri=start_uri)
-        end = get_or_create_concept(uri=end_uri)
-        edge = get_or_create(Edge, relation=relation, start=start, end=end)
-        edge.etc = json.loads(edge_etc_json)
-    dump_loading_end = datetime.now()
-    print("Time for loading dump:", dump_loading_end - dump_loading_start)
+    def unpack_ints(buffer: bytes) -> Tuple[int, ...]:
+        return struct.unpack(get_struct_format(len(buffer) // 8), buffer)
 
+    def relation_in_bytes(relation_uri: str) -> bytes:
+        relation_name = extract_relation_name(relation_uri)
+        return relation_name.encode('utf8')
+
+    def language_and_label_in_bytes(concept_uri: str) -> Tuple[bytes, bytes]:
+        return tuple(x.encode('utf8') for x in concept_uri.split('/', maxsplit=4)[2:4])[:2]
+
+    def normalize() -> None:
+        def normalize_relation() -> None:
+            nonlocal relation_i
+
+            relation_b = relation_in_bytes(relation_uri=relation_uri)
+            relation_exists = txn.get(relation_b, db=relation_db) is not None
+            if not relation_exists:
+                relation_i += 1
+                relation_i_b = pack_ints(relation_i)
+                txn.put(relation_b, relation_i_b, db=relation_db)
+
+        def normalize_concept(uri: str) -> None:
+            nonlocal language_i, label_i, concept_i
+
+            language_b, label_b = language_and_label_in_bytes(concept_uri=uri)
+
+            language_id_b = txn.get(language_b, db=language_db)
+            if language_id_b is None:
+                language_i += 1
+                language_id_b = pack_ints(language_i)
+                txn.put(language_b, language_id_b, db=language_db)
+
+            label_language_b = label_b + b'/' + language_b
+            label_id_b = txn.get(label_language_b, db=label_db)
+            if label_id_b is None:
+                label_i += 1
+                label_id_b = pack_ints(label_i)
+                txn.put(label_language_b, label_id_b, db=label_db)
+
+            concept_b = uri.encode('utf8')
+            concept_id_b = txn.get(concept_b, db=concept_db)
+            if concept_id_b is None:
+                concept_i += 1
+                concept_id_b = pack_ints(concept_i)
+                txn.put(concept_b, concept_id_b, db=concept_db)
+
+        print('Dump normalization')
+        language_i, relation_i, label_i, concept_i, edge_i = 5 * [0]
+        for relation_uri, start_uri, end_uri, _ in edges_from_dump_by_parts_generator(count=edges_count):
+            edge_i += 1
+
+            normalize_relation()
+            normalize_concept(start_uri)
+            normalize_concept(end_uri)
+
+            if edge_i % 1000000 == 0:
+                print(edge_i)
+
+    def insert() -> None:
+        def insert_objects_from_edge():
+            nonlocal edge_i
+
+            def insert_relation() -> int:
+                nonlocal relation_i
+
+                relation_b = relation_in_bytes(relation_uri=relation_uri)
+                result_id, = unpack_ints(buffer=txn.get(relation_b, db=relation_db))
+                if result_id == relation_i:
+                    name = relation_b.decode('utf8')
+                    cursor.execute('insert into Relation (name) values (?)', (name, ))
+                    relation_i += 1
+                return result_id
+
+            def insert_concept(uri: str) -> int:
+                nonlocal language_i, label_i, concept_i
+
+                split_uri = uri.split('/', maxsplit=4)
+
+                language_b, label_b = language_and_label_in_bytes(concept_uri=uri)
+
+                language_id, = unpack_ints(buffer=txn.get(language_b, db=language_db))
+                if language_id == language_i:
+                    name = split_uri[2]
+                    cursor.execute('insert into Language (name) values (?)', (name, ))
+                    language_i += 1
+
+                label_language_b = label_b + b'/' + language_b
+                label_id, = unpack_ints(buffer=txn.get(label_language_b, db=label_db))
+                if label_id == label_i:
+                    text = split_uri[3]
+                    params = (text, language_id)
+                    cursor.execute('insert into Label (text, language) values (?, ?)', params)
+                    label_i += 1
+
+                concept_b = uri.encode('utf8')
+                concept_id, = unpack_ints(buffer=txn.get(concept_b, db=concept_db))
+                if concept_id == concept_i:
+                    sense_label = '' if len(split_uri) == 4 else split_uri[4]
+                    params = (label_id, sense_label)
+                    cursor.execute('insert into Concept (label, sense_label) values (?, ?)', params)
+                    concept_i += 1
+                return concept_id
+
+            def insert_edge() -> None:
+                params = (relation_id, start_id, end_id, edge_etc)
+                cursor.execute('insert into Edge (relation, start, end, etc) values (?, ?, ?, ?)', params)
+
+            relation_id = insert_relation()
+            start_id = insert_concept(uri=start_uri)
+            end_id = insert_concept(uri=end_uri)
+            insert_edge()
+            edge_i += 1
+
+        print('Dump insertion')
+        relation_i, language_i, label_i, concept_i, edge_i = 5 * [1]
+        edges = edges_from_dump_by_parts_generator(count=edges_count)
+        finished = False
+        while not finished:
+            edge_count_per_insert = 1000000
+            with orm.db_session:
+                db_connection = db.get_connection()
+                cursor = db_connection.cursor()
+                for _ in range(edge_count_per_insert):
+                    try:
+                        relation_uri, start_uri, end_uri, edge_etc = next(edges)
+                    except StopIteration:
+                        finished = True
+                        break
+                    insert_objects_from_edge()
+                pass
+            pass
+
+    GIB = 1 << 30
+    lmdb_db_path = dump_path.parent / f'conceptnet-lmdb-{uuid4()}.db'
+    env = lmdb.open(str(lmdb_db_path), map_size=4*GIB, max_dbs=5, sync=False, writemap=False)
+    relation_db = env.open_db(b'relation')
+    language_db = env.open_db(b'language')
+    label_db = env.open_db(b'label')
+    concept_db = env.open_db(b'concept')
+    with env.begin(write=True) as txn:
+        normalize()
+        insert()
+
+    shutil.rmtree(str(lmdb_db_path), ignore_errors=True)
     if delete_dump:
         dump_path.unlink()
 
@@ -222,7 +349,7 @@ def prepare_db(
     db_path.parent.mkdir(parents=True, exist_ok=True)
     dump_dir_path.mkdir(parents=True, exist_ok=True)
 
-    open_db(path=db_path, create_db=True)
+    open_db(path=db_path)
 
     try:
         load_dump_to_db(dump_path=dump_path, edges_count=load_dump_edges_count, delete_dump=delete_dump)
