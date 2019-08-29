@@ -1,11 +1,9 @@
-from enum import Enum
-
 import langcodes
 import pony.orm.dbapiprovider
 from pony import orm
 
 
-class RelationName(Enum):
+class RelationName:
     RELATED_TO = 'related_to'
     FORM_OF = 'form_of'
     IS_A = 'is_a'
@@ -42,19 +40,6 @@ class RelationName(Enum):
     EXTERNAL_URL = 'external_url'
 
 
-class EnumConverter(orm.dbapiprovider.StrConverter):
-    def validate(self, val, obj=None):
-        if not isinstance(val, Enum):
-            raise ValueError('Must be an enum.Enum. Got {}'.format(type(val)))
-        return val
-
-    def py2sql(self, val):
-        return val.name
-
-    def sql2py(self, value):
-        return self.py_type[value]
-
-
 class LanguageConverter(orm.dbapiprovider.StrConverter):
     def validate(self, val, obj=None):
         val = langcodes.Language.get(val)
@@ -74,7 +59,7 @@ db = orm.Database()
 
 class Relation(db.Entity):
     id = orm.PrimaryKey(int, auto=True)
-    name = orm.Required(RelationName, unique=True)
+    name = orm.Required(str, unique=True)
     edges = orm.Set('Edge')
 
     @property

@@ -11,7 +11,7 @@ import langcodes
 from pony import orm
 from pySmartDL import SmartDL
 
-from conceptnet_lite.db import db, EnumConverter, LanguageConverter, Concept, Language, Label, Relation, RelationName
+from conceptnet_lite.db import db, LanguageConverter, Concept, Language, Label, Relation, RelationName
 from conceptnet_lite.db import Edge
 from conceptnet_lite.utils import PathOrStr, to_snake_case
 
@@ -34,7 +34,7 @@ class ConceptNet:
     ):
         def open_db(create_db: bool = False):
             db.bind(provider='sqlite', filename=str(self._db_path), create_db=create_db)
-            db.provider.converter_classes += [(Enum, EnumConverter), (langcodes.Language, LanguageConverter)]
+            db.provider.converter_classes.append((langcodes.Language, LanguageConverter))
             db.generate_mapping(create_tables=True)
 
         self._db_path = Path(path).expanduser().resolve()
@@ -114,7 +114,7 @@ class ConceptNet:
         print("Load dump to database")
         for relation_name, start_uri, end_uri, edge_etc_json in (
                 edges_from_dump_by_parts_generator(path=dump_path, count=edges_count)):
-            relation = get_or_create(Relation, name=RelationName(extract_relation_name(relation_name)))
+            relation = get_or_create(Relation, name=extract_relation_name(relation_name))
             start = get_or_create_concept(uri=start_uri)
             end = get_or_create_concept(uri=end_uri)
             edge = get_or_create(Edge, relation=relation, start=start, end=end)
