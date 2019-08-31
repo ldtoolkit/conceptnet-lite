@@ -20,8 +20,6 @@ The assertion files for ConceptNet are provided [here](https://github.com/common
 
 (building instructions TBA)
 
-The structure of the resulting database is shown [here](https://github.com/ldtoolkit/conceptnet-lite/blob/master/docs/er-diagram.pdf)
-
 ## Accessing concepts
 
 Concepts objects are created by looking for every entry that matches the input string exactly.

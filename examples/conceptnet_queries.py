@@ -6,7 +6,7 @@ from conceptnet_lite import Label, Language, edges_for, edges_between
 
 base_dir_path = Path('~/conceptnet-lite-data')
 conceptnet_lite.connect(
-    path=base_dir_path / 'conceptnet.db',
+    db_path=base_dir_path / 'conceptnet.db',
     dump_dir_path=base_dir_path,
 )
 

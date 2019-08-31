@@ -12,10 +12,15 @@ from peewee import DatabaseProxy, Model, TextField, ForeignKeyField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
 from pySmartDL import SmartDL
 
-from conceptnet_lite.utils import PathOrStr, to_snake_case
+from conceptnet_lite.utils import PathOrStr, _to_snake_case
 
 
-class RelationName:  # Names of non-deprecated relations
+class RelationName:
+    """Names of non-deprecated relations.
+
+    See: https://github.com/commonsense/conceptnet5/wiki/Relations.
+    """
+
     RELATED_TO = 'related_to'
     FORM_OF = 'form_of'
     IS_A = 'is_a'
@@ -55,12 +60,17 @@ class RelationName:  # Names of non-deprecated relations
 db = DatabaseProxy()
 
 
-class BaseModel(Model):
+class _BaseModel(Model):
     class Meta:
         database = db
 
 
-class Relation(BaseModel):
+class Relation(_BaseModel):
+    """Relation ORM class.
+
+    See: https://github.com/commonsense/conceptnet5/wiki/Relations.
+    """
+
     name = TextField(unique=True)
 
     @property
@@ -68,16 +78,37 @@ class Relation(BaseModel):
         return f'/r/{self.name}'
 
 
-class Language(BaseModel):
+class Language(_BaseModel):
+    """Language ORM class.
+
+    See: https://github.com/commonsense/conceptnet5/wiki/Languages.
+    """
+
     name = TextField(unique=True)
 
 
-class Label(BaseModel):
+class Label(_BaseModel):
+    """Label ORM class.
+
+    :class:`Label` can be seen as a part of :class:`Concept`. :class:`Label` is basically a text on a certain language
+    (most often, a word).
+
+    This abstraction is not present in the original ConceptNet. Class is introduced for the purposes of normalization.
+    """
+
     text = TextField(index=True)
     language = ForeignKeyField(Language, backref='labels')
 
 
-class Concept(BaseModel):
+class Concept(_BaseModel):
+    """Concept ORM class.
+
+    :class:`Concept` represents node in ConceptNet knowledge graph. It provides properties :attr:`language` and
+    :attr:`text` that are aliases for corresponding :attr:`Label.language` and :attr:`Label.text` fields.
+
+    This abstraction is not present in the original ConceptNet. Class is introduced for the purposes of normalization.
+    """
+
     label = ForeignKeyField(Label, backref='concepts')
     sense_label = TextField()
 
@@ -95,7 +126,14 @@ class Concept(BaseModel):
         return self.label.text
 
 
-class Edge(BaseModel):
+class Edge(_BaseModel):
+    """Edge ORM class.
+
+    See: https://github.com/commonsense/conceptnet5/wiki/Edges.
+
+    Everything except relation, start, and end nodes is stored in :attr:`etc` field that is plain :class:`dict`.
+    """
+
     relation = ForeignKeyField(Relation, backref='edges')
     start = ForeignKeyField(Concept, backref='edges_out')
     end = ForeignKeyField(Concept, backref='edges_in')
@@ -106,7 +144,7 @@ class Edge(BaseModel):
         return f'/a/[{self.relation.uri}/,{self.start.uri}/,{self.end.uri}/]'
 
 
-def open_db(path: PathOrStr):
+def _open_db(path: PathOrStr):
     db.initialize(SqliteExtDatabase(path, pragmas={
         'synchronous': 0,
         'cache_size': -1024 * 64,
@@ -122,11 +160,17 @@ CONCEPTNET_EDGE_COUNT = 34074917
 
 def download_dump(
     url: str = CONCEPTNET_DOWNLOAD_URL,
-    dir_path: PathOrStr = Path.cwd(),
-    progress_bar: bool = True,
+    out_dir_path: PathOrStr = Path.cwd(),
 ):
+    """Download compressed ConceptNet dump.
+
+    Args:
+        url: Link to the dump.
+        out_dir_path: Dir where to store dump.
+    """
+
     print("Download compressed dump")
-    compressed_dump_downloader = SmartDL(url, str(dir_path), progress_bar=progress_bar)
+    compressed_dump_downloader = SmartDL(url, str(out_dir_path))
     compressed_dump_path = Path(compressed_dump_downloader.dest)
     if not compressed_dump_path.is_file():
         shutil.rmtree(str(compressed_dump_path), ignore_errors=True)
@@ -137,6 +181,13 @@ def unpack_dump(
     compressed_dump_path: PathOrStr,
     delete_compressed_dump: bool = True,
 ):
+    """Unpack compressed ConceptNet dump.
+
+    Args:
+          compressed_dump_path: Path to compressed dump to unpack.
+          delete_compressed_dump: Delete compressed dump after unpacking.
+    """
+
     print("Uncompress compressed dump")
     dump_path = Path(compressed_dump_path).with_suffix('')
     with gzip.open(str(compressed_dump_path), 'rb') as f_in:
@@ -148,9 +199,17 @@ def unpack_dump(
 
 def load_dump_to_db(
     dump_path: PathOrStr,
-    edges_count: int = CONCEPTNET_EDGE_COUNT,
+    edge_count: int = CONCEPTNET_EDGE_COUNT,
     delete_dump: bool = True,
 ):
+    """Load dump to database.
+
+    Args:
+          dump_path: Path to dump to load.
+          edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
+          delete_dump: Delete dump after loading into database.
+    """
+
     def edges_from_dump_by_parts_generator(
             count: Optional[int] = None,
     ) -> Generator[Tuple[str, str, str, str], None, None]:
@@ -162,7 +221,7 @@ def load_dump_to_db(
                 yield row[1:5]
 
     def extract_relation_name(uri: str) -> str:
-        return to_snake_case(uri[3:])
+        return _to_snake_case(uri[3:])
 
     def get_struct_format(length: int) -> str:
         return f'{length}Q'
@@ -181,6 +240,8 @@ def load_dump_to_db(
         return tuple(x.encode('utf8') for x in concept_uri.split('/', maxsplit=4)[2:4])[:2]
 
     def normalize() -> None:
+        """Normalize dump before loading into database using lmdb."""
+
         def normalize_relation() -> None:
             nonlocal relation_i
 
@@ -218,13 +279,15 @@ def load_dump_to_db(
 
         print('Dump normalization')
         language_i, relation_i, label_i, concept_i = 4 * [0]
-        edges = edges_from_dump_by_parts_generator(count=edges_count)
-        for relation_uri, start_uri, end_uri, _ in tqdm(edges, total=edges_count):
+        edges = edges_from_dump_by_parts_generator(count=edge_count)
+        for relation_uri, start_uri, end_uri, _ in tqdm(edges, total=edge_count):
             normalize_relation()
             normalize_concept(start_uri)
             normalize_concept(end_uri)
 
     def insert() -> None:
+        """Load dump from CSV and lmdb database into database."""
+
         def insert_objects_from_edge():
             nonlocal edge_i
 
@@ -281,8 +344,8 @@ def load_dump_to_db(
 
         print('Dump insertion')
         relation_i, language_i, label_i, concept_i, edge_i = 5 * [1]
-        edges = edges_from_dump_by_parts_generator(count=edges_count)
-        progress_bar = tqdm(total=edges_count)
+        edges = edges_from_dump_by_parts_generator(count=edge_count)
+        progress_bar = tqdm(total=edge_count)
         finished = False
         while not finished:
             edge_count_per_insert = 1000000
@@ -297,6 +360,7 @@ def load_dump_to_db(
                     progress_bar.update()
 
     GIB = 1 << 30
+    dump_path = Path(dump_path)
     lmdb_db_path = dump_path.parent / f'conceptnet-lmdb-{uuid4()}.db'
     env = lmdb.open(str(lmdb_db_path), map_size=4*GIB, max_dbs=5, sync=False, writemap=False)
     relation_db = env.open_db(b'relation')
@@ -314,13 +378,27 @@ def load_dump_to_db(
 
 def prepare_db(
         db_path: PathOrStr,
-        dump_dir_path: PathOrStr = Path.cwd(),
+        dump_dir_path: PathOrStr = '.',
         download_url: str = CONCEPTNET_DOWNLOAD_URL,
-        download_progress_bar: bool = True,
-        load_dump_edges_count: int = CONCEPTNET_EDGE_COUNT,
+        load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
         delete_dump: bool = True,
 ):
+    """Prepare ConceptNet database.
+
+    This function downloads the compressed ConceptNet dump, unpacks it, and loads it into database. First two steps
+    are optional, and are executed only if needed.
+
+    Caution: this function removes everything with the name :obj:`db_path`.
+
+    Args:
+        db_path: Path to the resulting database.
+        dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
+        download_url: Link to compressed ConceptNet dump.
+        load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
+        delete_compressed_dump: Delete compressed dump after unpacking.
+        delete_dump: Delete dump after loading into database.
+    """
     db_path = Path(db_path).expanduser().resolve()
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
     compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DOWNLOAD_URL.rpartition('/')[-1])
@@ -329,17 +407,19 @@ def prepare_db(
     db_path.parent.mkdir(parents=True, exist_ok=True)
     dump_dir_path.mkdir(parents=True, exist_ok=True)
 
-    open_db(path=db_path)
+    shutil.rmtree(str(db_path))
+
+    _open_db(path=db_path)
 
     try:
-        load_dump_to_db(dump_path=dump_path, edges_count=load_dump_edges_count, delete_dump=delete_dump)
-    except FileNotFoundError as e:
-        print(str(e).replace('[Errno 2] ', '', 1))
+        load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
+    except FileNotFoundError:
+        print(f"Dump does not exist: {dump_path}")
         try:
             unpack_dump(compressed_dump_path=compressed_dump_path, delete_compressed_dump=delete_compressed_dump)
-            load_dump_to_db(dump_path=dump_path, edges_count=load_dump_edges_count, delete_dump=delete_dump)
-        except FileNotFoundError as e:
-            print(str(e).replace('[Errno 2] ', '', 1))
-            download_dump(url=download_url, dir_path=dump_dir_path, progress_bar=download_progress_bar)
+            load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
+        except FileNotFoundError:
+            print(f"Compressed dump does not exist: {compressed_dump_path}")
+            download_dump(url=download_url, out_dir_path=dump_dir_path)
             unpack_dump(compressed_dump_path=compressed_dump_path, delete_compressed_dump=delete_compressed_dump)
-            load_dump_to_db(dump_path=dump_path, edges_count=load_dump_edges_count, delete_dump=delete_dump)
+            load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
