@@ -10,6 +10,7 @@ Welcome to conceptnet-lite's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   conceptnet_lite
 
 
 Indices and tables

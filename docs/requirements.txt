@@ -1,0 +1,5 @@
+lmdb==0.97
+peewee==3.10.0
+pySmartDL==1.3.2
+sphinx-autodoc-typehints==1.7.0
+tqdm==4.35.0
