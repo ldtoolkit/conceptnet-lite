@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from conceptnet_lite import ConceptNet
+import conceptnet_lite
 
 
 base_dir_path = Path('~/conceptnet-lite-data')
-cn = ConceptNet(
+conceptnet_lite.connect(
     path=base_dir_path / 'conceptnet.db',
     dump_dir_path=base_dir_path,
     delete_dump=False,

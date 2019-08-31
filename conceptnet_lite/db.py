@@ -6,16 +6,16 @@ from pathlib import Path
 from typing import Optional, Generator, Tuple
 from uuid import uuid4
 
-import langcodes
 import lmdb
-import pony.orm.dbapiprovider
-from pony import orm
+from tqdm import tqdm
+from peewee import DatabaseProxy, Model, TextField, ForeignKeyField
+from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
 from pySmartDL import SmartDL
 
 from conceptnet_lite.utils import PathOrStr, to_snake_case
 
 
-class RelationName:
+class RelationName:  # Names of non-deprecated relations
     RELATED_TO = 'related_to'
     FORM_OF = 'form_of'
     IS_A = 'is_a'
@@ -52,47 +52,42 @@ class RelationName:
     EXTERNAL_URL = 'external_url'
 
 
-class LanguageConverter(orm.dbapiprovider.StrConverter):
-    def validate(self, val, obj=None):
-        val = langcodes.Language.get(val)
-        if not isinstance(val, langcodes.Language):
-            raise ValueError('Must be an langcodes.Language. Got {}'.format(type(val)))
-        return val
-
-    def py2sql(self, val: langcodes.Language):
-        return str(val)
-
-    def sql2py(self, value):
-        return langcodes.Language.get(value)
+db = DatabaseProxy()
 
 
-db = orm.Database()
+class BaseModel(Model):
+    class Meta:
+        database = db
 
 
-class Relation(db.Entity):
-    id = orm.PrimaryKey(int, auto=True)
-    name = orm.Required(str, unique=True)
-    edges = orm.Set('Edge')
+class Relation(BaseModel):
+    name = TextField(unique=True)
 
     @property
     def uri(self) -> str:
         return f'/r/{self.name}'
 
 
-class Concept(db.Entity):
-    id = orm.PrimaryKey(int, auto=True)
-    edges_out = orm.Set('Edge', reverse='start')
-    edges_in = orm.Set('Edge', reverse='end')
-    label = orm.Required('Label')
-    sense_label = orm.Optional(str)
+class Language(BaseModel):
+    name = TextField(unique=True)
+
+
+class Label(BaseModel):
+    text = TextField(index=True)
+    language = ForeignKeyField(Language, backref='labels')
+
+
+class Concept(BaseModel):
+    label = ForeignKeyField(Label, backref='concepts')
+    sense_label = TextField()
 
     @property
     def uri(self) -> str:
         ending = f'/{self.sense_label}' if self.sense_label else ''
-        return f'/c/{self.label.language.name}/{self.label.text}{ending}'
+        return f'/c/{self.language.name}/{self.text}{ending}'
 
     @property
-    def language(self) -> 'Language':
+    def language(self) -> Language:
         return self.label.language
 
     @property
@@ -100,38 +95,29 @@ class Concept(db.Entity):
         return self.label.text
 
 
-class Edge(db.Entity):
-    id = orm.PrimaryKey(int, auto=True)
-    relation = orm.Required(Relation)
-    start = orm.Required(Concept, reverse='edges_out')
-    end = orm.Required(Concept, reverse='edges_in')
-    etc = orm.Optional(orm.Json)
+class Edge(BaseModel):
+    relation = ForeignKeyField(Relation, backref='edges')
+    start = ForeignKeyField(Concept, backref='edges_out')
+    end = ForeignKeyField(Concept, backref='edges_in')
+    etc = JSONField()
 
     @property
     def uri(self) -> str:
         return f'/a/[{self.relation.uri}/,{self.start.uri}/,{self.end.uri}/]'
 
 
-class Language(db.Entity):
-    id = orm.PrimaryKey(int, auto=True)
-    name = orm.Required(langcodes.Language)
-    labels = orm.Set('Label')
-
-
-class Label(db.Entity):
-    id = orm.PrimaryKey(int, auto=True)
-    text = orm.Required(str, index=True)
-    language = orm.Required(Language)
-    concepts = orm.Set(Concept)
-
-
 def open_db(path: PathOrStr):
-    db.bind(provider='sqlite', filename=str(path), create_db=True)
-    db.provider.converter_classes.append((langcodes.Language, LanguageConverter))
-    db.generate_mapping(create_tables=True)
+    db.initialize(SqliteExtDatabase(path, pragmas={
+        'synchronous': 0,
+        'cache_size': -1024 * 64,
+    }))
+    tables = [Relation, Language, Label, Concept, Edge]
+    db.create_tables(tables)
 
 
+# For ConceptNet 5.7:
 CONCEPTNET_DOWNLOAD_URL = 'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz'
+CONCEPTNET_EDGE_COUNT = 34074917
 
 
 def download_dump(
@@ -162,7 +148,7 @@ def unpack_dump(
 
 def load_dump_to_db(
     dump_path: PathOrStr,
-    edges_count: Optional[int] = None,
+    edges_count: int = CONCEPTNET_EDGE_COUNT,
     delete_dump: bool = True,
 ):
     def edges_from_dump_by_parts_generator(
@@ -171,9 +157,9 @@ def load_dump_to_db(
         with open(str(dump_path), newline='') as f:
             reader = csv.reader(f, delimiter='\t')
             for i, row in enumerate(reader):
-                yield row[1:5]
                 if i == count:
                     break
+                yield row[1:5]
 
     def extract_relation_name(uri: str) -> str:
         return to_snake_case(uri[3:])
@@ -231,16 +217,12 @@ def load_dump_to_db(
                 txn.put(concept_b, concept_id_b, db=concept_db)
 
         print('Dump normalization')
-        language_i, relation_i, label_i, concept_i, edge_i = 5 * [0]
-        for relation_uri, start_uri, end_uri, _ in edges_from_dump_by_parts_generator(count=edges_count):
-            edge_i += 1
-
+        language_i, relation_i, label_i, concept_i = 4 * [0]
+        edges = edges_from_dump_by_parts_generator(count=edges_count)
+        for relation_uri, start_uri, end_uri, _ in tqdm(edges, total=edges_count):
             normalize_relation()
             normalize_concept(start_uri)
             normalize_concept(end_uri)
-
-            if edge_i % 1000000 == 0:
-                print(edge_i)
 
     def insert() -> None:
         def insert_objects_from_edge():
@@ -253,7 +235,7 @@ def load_dump_to_db(
                 result_id, = unpack_ints(buffer=txn.get(relation_b, db=relation_db))
                 if result_id == relation_i:
                     name = relation_b.decode('utf8')
-                    cursor.execute('insert into Relation (name) values (?)', (name, ))
+                    db.execute_sql('insert into relation (name) values (?)', (name, ))
                     relation_i += 1
                 return result_id
 
@@ -267,7 +249,7 @@ def load_dump_to_db(
                 language_id, = unpack_ints(buffer=txn.get(language_b, db=language_db))
                 if language_id == language_i:
                     name = split_uri[2]
-                    cursor.execute('insert into Language (name) values (?)', (name, ))
+                    db.execute_sql('insert into language (name) values (?)', (name, ))
                     language_i += 1
 
                 label_language_b = label_b + b'/' + language_b
@@ -275,7 +257,7 @@ def load_dump_to_db(
                 if label_id == label_i:
                     text = split_uri[3]
                     params = (text, language_id)
-                    cursor.execute('insert into Label (text, language) values (?, ?)', params)
+                    db.execute_sql('insert into label (text, language_id) values (?, ?)', params)
                     label_i += 1
 
                 concept_b = uri.encode('utf8')
@@ -283,13 +265,13 @@ def load_dump_to_db(
                 if concept_id == concept_i:
                     sense_label = '' if len(split_uri) == 4 else split_uri[4]
                     params = (label_id, sense_label)
-                    cursor.execute('insert into Concept (label, sense_label) values (?, ?)', params)
+                    db.execute_sql('insert into concept (label_id, sense_label) values (?, ?)', params)
                     concept_i += 1
                 return concept_id
 
             def insert_edge() -> None:
                 params = (relation_id, start_id, end_id, edge_etc)
-                cursor.execute('insert into Edge (relation, start, end, etc) values (?, ?, ?, ?)', params)
+                db.execute_sql('insert into edge (relation_id, start_id, end_id, etc) values (?, ?, ?, ?)', params)
 
             relation_id = insert_relation()
             start_id = insert_concept(uri=start_uri)
@@ -300,12 +282,11 @@ def load_dump_to_db(
         print('Dump insertion')
         relation_i, language_i, label_i, concept_i, edge_i = 5 * [1]
         edges = edges_from_dump_by_parts_generator(count=edges_count)
+        progress_bar = tqdm(total=edges_count)
         finished = False
         while not finished:
             edge_count_per_insert = 1000000
-            with orm.db_session:
-                db_connection = db.get_connection()
-                cursor = db_connection.cursor()
+            with db.atomic():
                 for _ in range(edge_count_per_insert):
                     try:
                         relation_uri, start_uri, end_uri, edge_etc = next(edges)
@@ -313,8 +294,7 @@ def load_dump_to_db(
                         finished = True
                         break
                     insert_objects_from_edge()
-                pass
-            pass
+                    progress_bar.update()
 
     GIB = 1 << 30
     lmdb_db_path = dump_path.parent / f'conceptnet-lmdb-{uuid4()}.db'
@@ -337,7 +317,7 @@ def prepare_db(
         dump_dir_path: PathOrStr = Path.cwd(),
         download_url: str = CONCEPTNET_DOWNLOAD_URL,
         download_progress_bar: bool = True,
-        load_dump_edges_count: Optional[int] = None,
+        load_dump_edges_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
         delete_dump: bool = True,
 ):
