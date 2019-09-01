@@ -45,18 +45,42 @@ def connect(
         _open_db(path=db_path)
 
 
-def edges_from(start_concepts: Iterable[Concept]) -> peewee.BaseModelSelect:
-    result = Edge.select().where(Edge.start.in_(start_concepts))
-    return result
+def edges_from(start_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
+    if same_language:
+        ConceptAlias = Concept.alias()
+        start_concepts = list(start_concepts)
+        return (Edge
+                .select()
+                .join(Concept, on=(Concept.id == Edge.start))
+                .where(Concept.id.in_(start_concepts))
+                .switch(Edge)
+                .join(ConceptAlias, on=(ConceptAlias.id == Edge.end))
+                .join(Label)
+                .join(Language)
+                .where(Language.id == start_concepts[0].label.language))
+    else:
+        return Edge.select().where(Edge.start.in_(start_concepts))
 
 
-def edges_to(end_concepts: Iterable[Concept]) -> peewee.BaseModelSelect:
-    result = Edge.select().where(Edge.end.in_(end_concepts))
-    return result
+def edges_to(end_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
+    if same_language:
+        ConceptAlias = Concept.alias()
+        end_concepts = list(end_concepts)
+        return (Edge
+                .select()
+                .join(Concept, on=(Concept.id == Edge.end))
+                .where(Concept.id.in_(end_concepts))
+                .switch(Edge)
+                .join(ConceptAlias, on=(ConceptAlias.id == Edge.start))
+                .join(Label)
+                .join(Language)
+                .where(Language.id == end_concepts[0].label.language))
+    else:
+        return Edge.select().where(Edge.end.in_(end_concepts))
 
 
-def edges_for(concepts: Iterable[Concept]) -> peewee.BaseModelSelect:
-    return edges_from(concepts) | edges_to(concepts)
+def edges_for(concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
+    return edges_from(concepts, same_language=same_language) | edges_to(concepts, same_language=same_language)
 
 
 def edges_between(

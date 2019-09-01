@@ -76,33 +76,35 @@ for e in edges_between(introvert_concepts, extrovert_concepts, two_way=False):
 
 ```json
 {
-	'dataset': '/d/wiktionary/en',
-	'license': 'cc:by-sa/4.0',
-	'sources': [{
-		'contributor': '/s/resource/wiktionary/en',
-		'process': '/s/process/wikiparsec/2'
+	"dataset": "/d/wiktionary/en",
+	"license": "cc:by-sa/4.0",
+	"sources": [{
+		"contributor": "/s/resource/wiktionary/en",
+		"process": "/s/process/wikiparsec/2"
 	}, {
-		'contributor': '/s/resource/wiktionary/fr',
-		'process': '/s/process/wikiparsec/2'
+		"contributor": "/s/resource/wiktionary/fr",
+		"process": "/s/process/wikiparsec/2"
 	}],
-	'weight': 2.0
+	"weight": 2.0
 }
 ```
 
-## Accessing all relations for a given concept
+## Accessing all relations for a given concepts
 
-You can also retrieve all relations between a given concept and all other concepts, with the same options as above:
+You can also retrieve all relations between a given concepts and all other concepts, with the same options as above:
 
 ```python
 from conceptnet_lite import Label, Language, edges_for
 
 english = Language.get(name='en')
-for e in edges_for(Label.get(text='introvert', language=english, same_language=True).concepts):
+for e in edges_for(Label.get(text='introvert', language=english).concepts, same_language=True):
     print("  Edge URI:", e.uri)
     print(e.relation.name, e.start.text, e.end.text, e.etc)
 ```
 
-The only difference is that since the other concepts are not specified, it is possible to get edges to concepts in languages other than the source concept language.
+Note that we have used optional argument `same_language=True`. By supplying this argument we make `edges_for` return
+relations, both ends of which are in the same language. If this argument is skipped it is possible to get edges to
+concepts in languages other than the source concepts language.
 
 ## Accessing concept edges with a given relation direction
 
@@ -114,7 +116,7 @@ from conceptnet_lite import Language, Label
 english = Language.get(name='en')
 cat_concepts = Label.get(text='introvert', language=english).concepts  #
 for c in cat_concepts:
-    print("    Concept text:", c.text) # shall we also contract this to c.text?
+    print("    Concept text:", c.text)
     if c.edges_out:
         print("      Edges out:")
         for e in c.edges_out:

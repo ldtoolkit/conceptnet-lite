@@ -23,7 +23,7 @@ english = Language.get(name='en')
 
 print("Get edges for 'introvert':")
 introvert_concepts = Label.get(text='introvert', language=english).concepts
-for e in edges_for(introvert_concepts):
+for e in edges_for(introvert_concepts, same_language=True):
     print("  Edge URI:", e.uri)
 
 print("Traversing Russian:")
