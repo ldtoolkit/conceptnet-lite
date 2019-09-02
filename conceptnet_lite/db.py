@@ -407,7 +407,7 @@ def prepare_db(
     db_path.parent.mkdir(parents=True, exist_ok=True)
     dump_dir_path.mkdir(parents=True, exist_ok=True)
 
-    shutil.rmtree(str(db_path))
+    shutil.rmtree(str(db_path), ignore_errors=True)
 
     _open_db(path=db_path)
 
