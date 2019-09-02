@@ -376,6 +376,14 @@ def load_dump_to_db(
         dump_path.unlink()
 
 
+def _generate_db_path(db_dir_path: Path) -> Optional[Path]:
+    result = db_dir_path / 'conceptnet.db'
+    if result.is_file():
+        print(f"File already exists: {result}")
+    else:
+        return result
+
+
 def prepare_db(
         db_path: PathOrStr,
         dump_dir_path: PathOrStr = '.',
@@ -389,8 +397,6 @@ def prepare_db(
     This function downloads the compressed ConceptNet dump, unpacks it, and loads it into database. First two steps
     are optional, and are executed only if needed.
 
-    Caution: this function removes everything with the name :obj:`db_path`.
-
     Args:
         db_path: Path to the resulting database.
         dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
@@ -400,14 +406,16 @@ def prepare_db(
         delete_dump: Delete dump after loading into database.
     """
     db_path = Path(db_path).expanduser().resolve()
+    if db_path.is_dir():
+        db_path = _generate_db_path(db_path)
+        if db_path is None:
+            return
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
     compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DOWNLOAD_URL.rpartition('/')[-1])
     dump_path = compressed_dump_path.with_suffix('')
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
     dump_dir_path.mkdir(parents=True, exist_ok=True)
-
-    shutil.rmtree(str(db_path), ignore_errors=True)
 
     _open_db(path=db_path)
 
