@@ -42,6 +42,7 @@ def connect(
                 db_path=db_path,
                 delete_compressed_db=delete_compressed_db,
             )
+            _open_db(db_path)
         else:
             prepare_db(
                 db_path=db_path,
