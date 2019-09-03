@@ -2,11 +2,17 @@
 
 Conceptnet-lite is a Python library for working with ConceptNet offline without the need for PostgreSQL.
 
-The basic usage is as follows.
+The library comes with Apache License 2.0, and is separate from ConceptNet itself. The ConceptNet is available under [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/) license, which also applies to the formatted database file that we provide. See [here](https://github.com/commonsense/conceptnet5/wiki/Copying-and-sharing-ConceptNet) for the list of conditions for using ConceptNet data.
+
+This is the official citation for ConceptNet if you use it in research:
+
+> Robyn Speer, Joshua Chin, and Catherine Havasi. 2017. "ConceptNet 5.5: An Open Multilingual Graph of General Knowledge." In proceedings of AAAI 31.
+
+The basic usage of `conceptnet-lite` library is as follows.
 
 ## Loading the database object
 
-ConceptNet releases happen once a year. You can build your own database from an assertions file, but if there is a pre-built file it will be faster to just download that one. Here is the [compressed database file](todo) for ConceptNet 5.7 release.
+ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just download that one. Here is the [compressed database file](todo) for ConceptNet 5.7 release.
 
 ```python
 import conceptnet_lite
@@ -16,9 +22,13 @@ conceptnet_lite.connect('/path/to/conceptnet.db')
 
 ## Building the database for a new release.
 
-The assertion files for ConceptNet are provided [here](https://github.com/commonsense/conceptnet5/wiki/Downloads).
+If you provide an empty directory, `conceptnet-lite` will attempt to download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
 
-(building instructions TBA)
+```python
+import conceptnet_lite
+
+conceptnet_lite.connect('/empty/path/')
+```
 
 ## Accessing concepts
 
