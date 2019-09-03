@@ -3,7 +3,7 @@ from typing import Iterable
 
 import peewee
 
-from conceptnet_lite.db import CONCEPTNET_EDGE_COUNT, CONCEPTNET_DOWNLOAD_URL
+from conceptnet_lite.db import CONCEPTNET_EDGE_COUNT, CONCEPTNET_DOWNLOAD_URL, _generate_db_path
 from conceptnet_lite.db import Concept, Language, Label, Relation, RelationName, Edge
 from conceptnet_lite.db import prepare_db, _open_db
 from conceptnet_lite.utils import PathOrStr, _to_snake_case
@@ -30,9 +30,8 @@ def connect(
         delete_compressed_dump: Delete compressed dump after unpacking.
         delete_dump: Delete dump after loading into database.
     """
-    db_path = Path(db_path).expanduser().resolve()
-    if not db_path.is_file():
-        print(f"Database does not exist: {db_path}")
+    def except_clause():
+        print(f"Preparing database")
         prepare_db(
             db_path=db_path,
             dump_dir_path=dump_dir_path,
@@ -41,8 +40,21 @@ def connect(
             delete_compressed_dump=delete_compressed_dump,
             delete_dump=delete_dump,
         )
-    else:
-        _open_db(path=db_path)
+
+    db_path = Path(db_path).expanduser().resolve()
+    if db_path.is_dir():
+        db_path = _generate_db_path(db_path)
+    try:
+        if db_path.is_file():
+            _open_db(path=db_path)
+        else:
+            raise FileNotFoundError()
+    except peewee.OperationalError:
+        print(f"Unable to open database file: {db_path}")
+        except_clause()
+    except FileNotFoundError:
+        print(f"File not found: {db_path}")
+        except_clause()
 
 
 def edges_from(start_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:

@@ -2,6 +2,7 @@ import csv
 import gzip
 import shutil
 import struct
+from functools import partial
 from pathlib import Path
 from typing import Optional, Generator, Tuple
 from uuid import uuid4
@@ -188,17 +189,20 @@ def unpack_dump(
           delete_compressed_dump: Delete compressed dump after unpacking.
     """
 
-    print("Uncompress compressed dump")
-    dump_path = Path(compressed_dump_path).with_suffix('')
-    with gzip.open(str(compressed_dump_path), 'rb') as f_in:
-        with open(str(dump_path), 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    if delete_compressed_dump:
-        compressed_dump_path.unlink()
+    try:
+        dump_path = Path(compressed_dump_path).with_suffix('')
+        with gzip.open(str(compressed_dump_path), 'rb') as f_in:
+            with open(str(dump_path), 'wb') as f_out:
+                print("Uncompress compressed dump (this can take a few minutes)")
+                shutil.copyfileobj(f_in, f_out)
+    finally:
+        if delete_compressed_dump and compressed_dump_path.is_file():
+            compressed_dump_path.unlink()
 
 
 def load_dump_to_db(
     dump_path: PathOrStr,
+    db_path: PathOrStr,
     edge_count: int = CONCEPTNET_EDGE_COUNT,
     delete_dump: bool = True,
 ):
@@ -206,6 +210,7 @@ def load_dump_to_db(
 
     Args:
           dump_path: Path to dump to load.
+          db_path: Path to resulting database.
           edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
           delete_dump: Delete dump after loading into database.
     """
@@ -277,10 +282,12 @@ def load_dump_to_db(
                 concept_id_b = pack_ints(concept_i)
                 txn.put(concept_b, concept_id_b, db=concept_db)
 
-        print('Dump normalization')
         language_i, relation_i, label_i, concept_i = 4 * [0]
+        if not dump_path.is_file():
+            raise FileNotFoundError()
+        print('Dump normalization')
         edges = edges_from_dump_by_parts_generator(count=edge_count)
-        for relation_uri, start_uri, end_uri, _ in tqdm(edges, total=edge_count):
+        for i, (relation_uri, start_uri, end_uri, _) in tqdm(enumerate(edges), total=edge_count):
             normalize_relation()
             normalize_concept(start_uri)
             normalize_concept(end_uri)
@@ -367,21 +374,19 @@ def load_dump_to_db(
     language_db = env.open_db(b'language')
     label_db = env.open_db(b'label')
     concept_db = env.open_db(b'concept')
-    with env.begin(write=True) as txn:
-        normalize()
-        insert()
+    try:
+        with env.begin(write=True) as txn:
+            normalize()
+            _open_db(path=db_path)
+            insert()
+    finally:
+        shutil.rmtree(str(lmdb_db_path), ignore_errors=True)
+        if delete_dump and dump_path.is_file():
+            dump_path.unlink()
 
-    shutil.rmtree(str(lmdb_db_path), ignore_errors=True)
-    if delete_dump:
-        dump_path.unlink()
 
-
-def _generate_db_path(db_dir_path: Path) -> Optional[Path]:
-    result = db_dir_path / 'conceptnet.db'
-    if result.is_file():
-        print(f"File already exists: {result}")
-    else:
-        return result
+def _generate_db_path(db_dir_path: Path) -> Path:
+    return db_dir_path / 'conceptnet.db'
 
 
 def prepare_db(
@@ -405,10 +410,12 @@ def prepare_db(
         delete_compressed_dump: Delete compressed dump after unpacking.
         delete_dump: Delete dump after loading into database.
     """
+
     db_path = Path(db_path).expanduser().resolve()
     if db_path.is_dir():
         db_path = _generate_db_path(db_path)
-        if db_path is None:
+        if db_path.is_file():
+            print(f"File already exists and it is not a valid database: {db_path}")
             return
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
     compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DOWNLOAD_URL.rpartition('/')[-1])
@@ -417,17 +424,36 @@ def prepare_db(
     db_path.parent.mkdir(parents=True, exist_ok=True)
     dump_dir_path.mkdir(parents=True, exist_ok=True)
 
-    _open_db(path=db_path)
+    load_dump_to_db_ = partial(
+        load_dump_to_db,
+        dump_path=dump_path,
+        db_path=db_path,
+        edge_count=load_dump_edge_count,
+        delete_dump=delete_dump,
+    )
+    unpack_dump_ = partial(
+        unpack_dump,
+        compressed_dump_path=compressed_dump_path,
+        delete_compressed_dump=delete_compressed_dump,
+    )
+    download_dump_ = partial(
+        download_dump,
+        url=download_url,
+        out_dir_path=dump_dir_path,
+    )
 
     try:
-        load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
+        load_dump_to_db_()
     except FileNotFoundError:
-        print(f"Dump does not exist: {dump_path}")
         try:
-            unpack_dump(compressed_dump_path=compressed_dump_path, delete_compressed_dump=delete_compressed_dump)
-            load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
+            unpack_dump_()
+            load_dump_to_db_()
         except FileNotFoundError:
-            print(f"Compressed dump does not exist: {compressed_dump_path}")
-            download_dump(url=download_url, out_dir_path=dump_dir_path)
-            unpack_dump(compressed_dump_path=compressed_dump_path, delete_compressed_dump=delete_compressed_dump)
-            load_dump_to_db(dump_path=dump_path, edge_count=load_dump_edge_count, delete_dump=delete_dump)
+            download_dump_()
+            unpack_dump_()
+            load_dump_to_db_()
+    finally:
+        if delete_compressed_dump and compressed_dump_path.is_file():
+            compressed_dump_path.unlink()
+        if delete_dump and dump_path.is_file():
+            dump_path.unlink()
