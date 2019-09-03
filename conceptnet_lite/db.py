@@ -2,6 +2,7 @@ import csv
 import gzip
 import shutil
 import struct
+import zipfile
 from functools import partial
 from pathlib import Path
 from typing import Optional, Generator, Tuple
@@ -155,12 +156,14 @@ def _open_db(path: PathOrStr):
 
 
 # For ConceptNet 5.7:
-CONCEPTNET_DOWNLOAD_URL = 'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz'
+CONCEPTNET_DUMP_DOWNLOAD_URL = (
+    'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz')
 CONCEPTNET_EDGE_COUNT = 34074917
+CONCEPTNET_DB_NAME = 'conceptnet.db'
 
 
 def download_dump(
-    url: str = CONCEPTNET_DOWNLOAD_URL,
+    url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
     out_dir_path: PathOrStr = Path.cwd(),
 ):
     """Download compressed ConceptNet dump.
@@ -171,29 +174,26 @@ def download_dump(
     """
 
     print("Download compressed dump")
-    compressed_dump_downloader = SmartDL(url, str(out_dir_path))
-    compressed_dump_path = Path(compressed_dump_downloader.dest)
-    if not compressed_dump_path.is_file():
-        shutil.rmtree(str(compressed_dump_path), ignore_errors=True)
-        compressed_dump_downloader.start()
+    downloader = SmartDL(url, str(out_dir_path))
+    downloader.start()
 
 
-def unpack_dump(
+def extract_compressed_dump(
     compressed_dump_path: PathOrStr,
     delete_compressed_dump: bool = True,
 ):
-    """Unpack compressed ConceptNet dump.
+    """Extract compressed ConceptNet dump.
 
     Args:
-          compressed_dump_path: Path to compressed dump to unpack.
-          delete_compressed_dump: Delete compressed dump after unpacking.
+          compressed_dump_path: Path to compressed dump to extract.
+          delete_compressed_dump: Delete compressed dump after extraction.
     """
 
     try:
         dump_path = Path(compressed_dump_path).with_suffix('')
         with gzip.open(str(compressed_dump_path), 'rb') as f_in:
             with open(str(dump_path), 'wb') as f_out:
-                print("Uncompress compressed dump (this can take a few minutes)")
+                print("Extract compressed dump (this can take a few minutes)")
                 shutil.copyfileobj(f_in, f_out)
     finally:
         if delete_compressed_dump and compressed_dump_path.is_file():
@@ -386,13 +386,13 @@ def load_dump_to_db(
 
 
 def _generate_db_path(db_dir_path: Path) -> Path:
-    return db_dir_path / 'conceptnet.db'
+    return db_dir_path / CONCEPTNET_DB_NAME
 
 
 def prepare_db(
         db_path: PathOrStr,
         dump_dir_path: PathOrStr = '.',
-        download_url: str = CONCEPTNET_DOWNLOAD_URL,
+        dump_download_url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
         load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
         delete_dump: bool = True,
@@ -405,9 +405,9 @@ def prepare_db(
     Args:
         db_path: Path to the resulting database.
         dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
-        download_url: Link to compressed ConceptNet dump.
+        dump_download_url: Link to compressed ConceptNet dump.
         load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
-        delete_compressed_dump: Delete compressed dump after unpacking.
+        delete_compressed_dump: Delete compressed dump after extraction.
         delete_dump: Delete dump after loading into database.
     """
 
@@ -417,8 +417,10 @@ def prepare_db(
         if db_path.is_file():
             print(f"File already exists and it is not a valid database: {db_path}")
             return
+
+    print("Prepare database")
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
-    compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DOWNLOAD_URL.rpartition('/')[-1])
+    compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DUMP_DOWNLOAD_URL.rpartition('/')[-1])
     dump_path = compressed_dump_path.with_suffix('')
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -431,14 +433,14 @@ def prepare_db(
         edge_count=load_dump_edge_count,
         delete_dump=delete_dump,
     )
-    unpack_dump_ = partial(
-        unpack_dump,
+    extract_compressed_dump_ = partial(
+        extract_compressed_dump,
         compressed_dump_path=compressed_dump_path,
         delete_compressed_dump=delete_compressed_dump,
     )
     download_dump_ = partial(
         download_dump,
-        url=download_url,
+        url=dump_download_url,
         out_dir_path=dump_dir_path,
     )
 
@@ -446,14 +448,39 @@ def prepare_db(
         load_dump_to_db_()
     except FileNotFoundError:
         try:
-            unpack_dump_()
+            extract_compressed_dump_()
             load_dump_to_db_()
         except FileNotFoundError:
             download_dump_()
-            unpack_dump_()
+            extract_compressed_dump_()
             load_dump_to_db_()
     finally:
         if delete_compressed_dump and compressed_dump_path.is_file():
             compressed_dump_path.unlink()
         if delete_dump and dump_path.is_file():
             dump_path.unlink()
+
+
+def download_db(url: str, db_path: PathOrStr = CONCEPTNET_DB_NAME, delete_compressed_db: bool = True) -> None:
+    """Download compressed ConceptNet dump and extract it.
+
+    Args:
+        url: Link to compressed ConceptNet database.
+        db_path: Path to resulting database.
+        delete_compressed_db: Delete compressed database after extraction.
+    """
+
+    print("Download compressed database")
+    db_path = Path(db_path).expanduser().resolve()
+    downloader = SmartDL(url, str(db_path.parent))
+    compressed_db_path = Path(downloader.dest)
+    try:
+        downloader.start()
+        with zipfile.ZipFile(str(compressed_db_path), 'r') as zip_f:
+            print("Extract compressed database (this can take a few minutes)")
+            zip_f.extractall(db_path.parent)
+        if db_path.name != CONCEPTNET_DB_NAME:
+            Path(db_path.parent / CONCEPTNET_DB_NAME).rename(db_path)
+    finally:
+        if delete_compressed_db and compressed_db_path.is_file():
+            compressed_db_path.unlink()

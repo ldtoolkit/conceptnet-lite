@@ -1,45 +1,56 @@
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional
 
 import peewee
 
-from conceptnet_lite.db import CONCEPTNET_EDGE_COUNT, CONCEPTNET_DOWNLOAD_URL, _generate_db_path
+from conceptnet_lite.db import CONCEPTNET_EDGE_COUNT, CONCEPTNET_DUMP_DOWNLOAD_URL, CONCEPTNET_DB_NAME
 from conceptnet_lite.db import Concept, Language, Label, Relation, RelationName, Edge
-from conceptnet_lite.db import prepare_db, _open_db
+from conceptnet_lite.db import prepare_db, _open_db, _generate_db_path, download_db
 from conceptnet_lite.utils import PathOrStr, _to_snake_case
 
 
 def connect(
-        db_path: PathOrStr,
+        db_path: PathOrStr = CONCEPTNET_DB_NAME,
+        db_download_url: Optional[str] = None,
+        delete_compressed_db: bool = True,
+        dump_download_url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
         dump_dir_path: PathOrStr = '.',
-        download_url: str = CONCEPTNET_DOWNLOAD_URL,
         load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
         delete_dump: bool = True,
 ) -> None:
     """Connect to ConceptNet database.
 
-    This function downloads the compressed ConceptNet dump, unpacks it, loads it into database, and connects to it.
-    First three steps are optional, and are executed only if needed.
+    This function connects to ConceptNet database. If it does not exists, there are two options: to download ready
+    database (you should supply `db_download_url`) or to download the compressed ConceptNet dump, unpack it, load it
+    into database (the default option, please check if defaults are suitable for you).
 
     Args:
         db_path: Path to the resulting database.
+        db_download_url: Link to compressed ConceptNet database.
+        delete_compressed_db: Delete compressed database after extraction.
+        dump_download_url: Link to compressed ConceptNet dump.
         dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
-        download_url: Link to compressed ConceptNet dump.
         load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
         delete_compressed_dump: Delete compressed dump after unpacking.
         delete_dump: Delete dump after loading into database.
     """
     def except_clause():
-        print(f"Preparing database")
-        prepare_db(
-            db_path=db_path,
-            dump_dir_path=dump_dir_path,
-            download_url=download_url,
-            load_dump_edge_count=load_dump_edge_count,
-            delete_compressed_dump=delete_compressed_dump,
-            delete_dump=delete_dump,
-        )
+        if db_download_url is not None:
+            download_db(
+                url=db_download_url,
+                db_path=db_path,
+                delete_compressed_db=delete_compressed_db,
+            )
+        else:
+            prepare_db(
+                db_path=db_path,
+                dump_download_url=dump_download_url,
+                dump_dir_path=dump_dir_path,
+                load_dump_edge_count=load_dump_edge_count,
+                delete_compressed_dump=delete_compressed_dump,
+                delete_dump=delete_dump,
+            )
 
     db_path = Path(db_path).expanduser().resolve()
     if db_path.is_dir():
