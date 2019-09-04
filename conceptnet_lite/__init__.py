@@ -35,7 +35,16 @@ def connect(
         delete_compressed_dump: Delete compressed dump after unpacking.
         delete_dump: Delete dump after loading into database.
     """
-    def except_clause():
+    db_path = Path(db_path).expanduser().resolve()
+    if db_path.is_dir():
+        db_path = _generate_db_path(db_path)
+    try:
+        if db_path.is_file():
+            _open_db(path=db_path)
+        else:
+            raise FileNotFoundError(2, "No such file", str(db_path))
+    except FileNotFoundError:
+        print(f"File not found: {db_path}")
         if db_download_url is not None:
             download_db(
                 url=db_download_url,
@@ -52,21 +61,6 @@ def connect(
                 delete_compressed_dump=delete_compressed_dump,
                 delete_dump=delete_dump,
             )
-
-    db_path = Path(db_path).expanduser().resolve()
-    if db_path.is_dir():
-        db_path = _generate_db_path(db_path)
-    try:
-        if db_path.is_file():
-            _open_db(path=db_path)
-        else:
-            raise FileNotFoundError()
-    except peewee.OperationalError:
-        print(f"Unable to open database file: {db_path}")
-        except_clause()
-    except FileNotFoundError:
-        print(f"File not found: {db_path}")
-        except_clause()
 
 
 def edges_from(start_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:

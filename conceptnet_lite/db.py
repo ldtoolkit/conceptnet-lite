@@ -284,7 +284,7 @@ def load_dump_to_db(
 
         language_i, relation_i, label_i, concept_i = 4 * [0]
         if not dump_path.is_file():
-            raise FileNotFoundError()
+            raise FileNotFoundError(2, 'No such file', str(dump_path))
         print('Dump normalization')
         edges = edges_from_dump_by_parts_generator(count=edge_count)
         for i, (relation_uri, start_uri, end_uri, _) in tqdm(enumerate(edges), total=edge_count):
@@ -415,8 +415,7 @@ def prepare_db(
     if db_path.is_dir():
         db_path = _generate_db_path(db_path)
         if db_path.is_file():
-            print(f"File already exists and it is not a valid database: {db_path}")
-            return
+            raise FileExistsError(17, "File already exists and it is not a valid database", str(db_path))
 
     print("Prepare database")
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
