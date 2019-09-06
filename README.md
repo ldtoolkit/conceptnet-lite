@@ -10,25 +10,38 @@ This is the official citation for ConceptNet if you use it in research:
 
 The basic usage of `conceptnet-lite` library is as follows.
 
-## Loading the database object
+## Downloading the ConceptNet database 
 
-ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just download that one. Here is the [compressed database file](todo) for ConceptNet 5.7 release.
+ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download it automatically if `db_download_url` argument is specified.
+
+A link to a compressed database for ConceptNet 5.7 will be added shortly. 
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect('/path/to/conceptnet.db')
+conceptnet_lite.connect(db_path='/path/to/conceptnet', db_download_url="http://some/url.zip")
 ```
 
 ## Building the database for a new release.
 
-If you provide an empty directory, `conceptnet-lite` will attempt to download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
+If a database file is not found in the folder specified in the `df_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect('/empty/path/')
+conceptnet_lite.connect(db_path='/path/to/future/database/')
 ```
+
+## Loading the ConceptNet database 
+
+Once you have the database file, all you need to do is pass either the full path to it or a path to the folder containing a "conceptnet.db" file to the `db_path` argument:
+
+```python
+import conceptnet_lite
+
+conceptnet_lite.connect(db_path='/path/to/conceptnet.db')
+```
+
 
 ## Accessing concepts
 
@@ -257,4 +270,3 @@ for l in mylanguage.labels:
 Todo:
 
 - [ ] add database file link
-- [ ] describe how to build the database
