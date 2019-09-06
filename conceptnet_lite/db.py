@@ -147,7 +147,7 @@ class Edge(_BaseModel):
 
 
 def _open_db(path: PathOrStr):
-    db.initialize(SqliteExtDatabase(path, pragmas={
+    db.initialize(SqliteExtDatabase(str(path), pragmas={
         'synchronous': 0,
         'cache_size': -1024 * 64,
     }))
