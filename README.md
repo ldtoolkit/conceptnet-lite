@@ -236,12 +236,12 @@ for c in concepts:
 
 ## Traversing all the data for a language
 
-You can go over all concepts for a given language. For illustration, let us try Avestan, a "small" language with the code "ae" and vocab size of 371, according to the [ConceptNet language statistics](https://github.com/commonsense/conceptnet5/wiki/Languages).
+You can go over all concepts for a given language. For illustration, let us try Old Norse, a "small" language with the code "non" and vocab size of 7868, according to the [ConceptNet language statistics](https://github.com/commonsense/conceptnet5/wiki/Languages).
 
 ```python
 from conceptnet_lite import Language
 
-mylanguage = Language.get(name='ae')
+mylanguage = Language.get(name='non')
 for l in mylanguage.labels:
     print("  Label:", l.text)
     for c in l.concepts:
@@ -256,17 +256,22 @@ for l in mylanguage.labels:
                 print("        Edge URI:", e.uri)
 ```
 ```console
-  Label: 𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀
-    Concept URI: /c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/n
+  Label: andsœlis
+    Concept URI: /c/non/andsœlis/r
       Edges out:
-        Edge URI: /a/[/r/antonym/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/n/,/c/ae/𐬛𐬀𐬉𐬎𐬎𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
-    Concept URI: /c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀
+        Edge URI: /a/[/r/antonym/,/c/non/andsœlis/r/,/c/non/réttsœlis/]
+        Edge URI: /a/[/r/related_to/,/c/non/andsœlis/r/,/c/en/against/]
+        Edge URI: /a/[/r/related_to/,/c/non/andsœlis/r/,/c/en/course/]
+        Edge URI: /a/[/r/related_to/,/c/non/andsœlis/r/,/c/en/sun/]
+        Edge URI: /a/[/r/related_to/,/c/non/andsœlis/r/,/c/en/widdershins/]
+        Edge URI: /a/[/r/synonym/,/c/non/andsœlis/r/,/c/non/rangsœlis/]
+    Concept URI: /c/non/andsœlis
       Edges out:
-        Edge URI: /a/[/r/external_url/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/,/c/en.wiktionary.org/wiki/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+        Edge URI: /a/[/r/external_url/,/c/non/andsœlis/,/c/en.wiktionary.org/wiki/andsœlis/]
+  Label: réttsœlis
+    Concept URI: /c/non/réttsœlis
       Edges in:
-        Edge URI: /a/[/r/etymologically_related_to/,/c/fa/مزدیسنا/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
-        Edge URI: /a/[/r/etymologically_related_to/,/c/pal/𐭬𐭦𐭣𐭩𐭮𐭭/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
-        Edge URI: /a/[/r/etymologically_related_to/,/c/xpr/𐭌𐭆𐭃𐭉𐭆𐭍/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+        Edge URI: /a/[/r/antonym/,/c/non/andsœlis/r/,/c/non/réttsœlis/]
 ...
 ```
 
