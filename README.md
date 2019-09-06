@@ -43,6 +43,16 @@ for c in cat_concepts:
     print("    Concept URI:", c.uri)
     print("    Concept text:", c.text)
 ```
+```console
+Concept URI: /c/en/cat
+Concept text: cat
+Concept URI: /c/en/cat/n
+Concept text: cat
+Concept URI: /c/en/cat/n/wn/animal
+Concept text: cat
+Concept URI: /c/en/cat/n/wn/person
+...
+```
 
 `concept.uri` provides access to ConceptNet URIs, as described [here](https://github.com/commonsense/conceptnet5/wiki/URI-hierarchy). You can also retrieve only the text of the entry by `concept.text`.
 
@@ -62,6 +72,23 @@ for c in cat_concepts:
     print("    Concept language:", c.language.name)
 ```
 
+```console
+    Concept URI: /c/en/cat
+    Concept text: cat
+    Concept language: en
+    Concept URI: /c/en/cat/n
+    Concept text: cat
+    Concept language: en
+    Concept URI: /c/en/cat/n/wn/animal
+    Concept text: cat
+    Concept language: en
+    Concept URI: /c/en/cat/n/wn/person
+    Concept text: cat
+    Concept language: en
+...
+```
+
+
 ## Querying edges between concepts
 
 To retrieve the set of relations between two concepts, you need to create the concept objects (optionally specifying the language as described above). `cn.edges_between()` method retrieves all edges between the specified concepts. You can access its URI and a number of attributes, as shown below.
@@ -76,8 +103,19 @@ introvert_concepts = Label.get(text='introvert', language=english).concepts
 extrovert_concepts = Label.get(text='extrovert', language=english).concepts
 for e in edges_between(introvert_concepts, extrovert_concepts, two_way=False):
     print("  Edge URI:", e.uri)
-    print(e.relation.name, e.start.text, e.end.text, e.etc)
+    print("  Edge name:", e.relation.name)
+    print("  Edge start node:", e.start.text)
+    print("  Edge end node:", e.end.text)
+    print("  Edge metadata:", e.etc)
 ```
+```console
+  Edge URI: /a/[/r/antonym/,/c/en/introvert/n/,/c/en/extrovert/]
+  Edge name: antonym
+  Edge start node: introvert
+  Edge end node: extrovert
+  Edge metadata: {'dataset': '/d/wiktionary/en', 'license': 'cc:by-sa/4.0', 'sources': [{'contributor': '/s/resource/wiktionary/en', 'process': '/s/process/wikiparsec/2'}, {'contributor': '/s/resource/wiktionary/fr', 'process': '/s/process/wikiparsec/2'}], 'weight': 2.0}
+```
+
 * **e.relation.name**: the name of ConceptNet relation. Full list [here](https://github.com/commonsense/conceptnet5/wiki/Relations).
 
 * **e.start.text, e.end.text**: the source and the target concepts in the edge
@@ -108,13 +146,38 @@ from conceptnet_lite import Label, Language, edges_for
 
 english = Language.get(name='en')
 for e in edges_for(Label.get(text='introvert', language=english).concepts, same_language=True):
-    print("  Edge URI:", e.uri)
-    print(e.relation.name, e.start.text, e.end.text, e.etc)
+    print(e.start.text, "::", e.end.text, "|", e.relation.name)
 ```
+```console
+extrovert :: introvert | antonym
+introvert :: extrovert | antonym
+outrovert :: introvert | antonym
+reflection :: introvert | at_location
+introverse :: introvert | derived_from
+introversible :: introvert | derived_from
+introversion :: introvert | derived_from
+introversion :: introvert | derived_from
+introversive :: introvert | derived_from
+introverted :: introvert | derived_from
+...
+```
+
+The same set of edge attributes are available for `edges_between` and `edges_for` (e.uri, e.relation.name, e.start.text, e.end.text, e.etc).
 
 Note that we have used optional argument `same_language=True`. By supplying this argument we make `edges_for` return
 relations, both ends of which are in the same language. If this argument is skipped it is possible to get edges to
-concepts in languages other than the source concepts language.
+concepts in languages other than the source concepts language. For example, the same command as above with `same_language=False` will include the following in the output:
+
+```console
+kääntyä_sisäänpäin :: introvert | synonym
+sulkeutua :: introvert | synonym
+sulkeutunut :: introvert | synonym
+introverti :: introvert | synonym
+asociale :: introvert | synonym
+introverso :: introvert | synonym
+introvertito :: introvert | synonym
+内向 :: introvert | synonym
+```
 
 ## Accessing concept edges with a given relation direction
 
@@ -124,8 +187,8 @@ You can also query the relations that have a specific concept as target or sourc
 from conceptnet_lite import Language, Label
 
 english = Language.get(name='en')
-cat_concepts = Label.get(text='introvert', language=english).concepts  #
-for c in cat_concepts:
+concepts = Label.get(text='introvert', language=english).concepts  #
+for c in concepts:
     print("    Concept text:", c.text)
     if c.edges_out:
         print("      Edges out:")
@@ -140,7 +203,19 @@ for c in cat_concepts:
             print("        Relation:", e.relation.name)
             print("        End:", e.end.text)
 ```
-
+```console
+    Concept text: introvert
+      Edges out:
+        Edge URI: /a/[/r/etymologically_derived_from/,/c/en/introvert/,/c/la/introvertere/]
+        Relation: etymologically_derived_from
+        End: introvertere
+...
+      Edges in:
+        Edge URI: /a/[/r/antonym/,/c/cs/extrovert/n/,/c/en/introvert/]
+        Relation: antonym
+        End: introvert
+...
+```
 
 # Traversing all the data for a language
 
@@ -163,9 +238,23 @@ for l in mylanguage.labels:
             for e in c.edges_in:
                 print("        Edge URI:", e.uri)
 ```
+```console
+  Label: 𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀
+    Concept URI: /c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/n
+      Edges out:
+        Edge URI: /a/[/r/antonym/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/n/,/c/ae/𐬛𐬀𐬉𐬎𐬎𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+    Concept URI: /c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀
+      Edges out:
+        Edge URI: /a/[/r/external_url/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/,/c/en.wiktionary.org/wiki/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+      Edges in:
+        Edge URI: /a/[/r/etymologically_related_to/,/c/fa/مزدیسنا/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+        Edge URI: /a/[/r/etymologically_related_to/,/c/pal/𐭬𐭦𐭣𐭩𐭮𐭭/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+        Edge URI: /a/[/r/etymologically_related_to/,/c/xpr/𐭌𐭆𐭃𐭉𐭆𐭍/,/c/ae/𐬨𐬀𐬰𐬛𐬀𐬌𐬌𐬀𐬯𐬥𐬀/]
+...
+```
+
 
 Todo:
 
 - [ ] add database file link
 - [ ] describe how to build the database
-- [ ] add sample outputs
