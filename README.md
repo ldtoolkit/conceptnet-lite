@@ -1,4 +1,8 @@
 # conceptnet-lite
+[![License](https://img.shields.io/pypi/l/conceptnet-lite.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/conceptnet-lite.svg)
+[![PyPI](https://img.shields.io/pypi/v/conceptnet-lite.svg)](https://pypi.org/project/conceptnet-lite/)
+[![Documentation Status](https://img.shields.io/readthedocs/conceptnet-lite.svg)](http://conceptnet-lite.readthedocs.io/en/latest/)
 
 Conceptnet-lite is a Python library for working with ConceptNet offline without the need for PostgreSQL.
 
