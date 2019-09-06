@@ -24,7 +24,7 @@ conceptnet_lite.connect(db_path='/path/to/conceptnet', db_download_url="http://s
 
 ## Building the database for a new release.
 
-If a database file is not found in the folder specified in the `df_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
+If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
 
 ```python
 import conceptnet_lite
