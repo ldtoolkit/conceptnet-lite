@@ -55,7 +55,7 @@ If none is found, the `peewee.DoesNotExist` exception will be raised.
 ```python
 from conceptnet_lite import Label
 
-cat_concepts = Label.get(text='cat').concepts  #
+cat_concepts = Label.get(text='cat').concepts  
 for c in cat_concepts:
     print("    Concept URI:", c.uri)
     print("    Concept text:", c.text)
@@ -82,7 +82,7 @@ List of available languages and their codes are described [here](https://github.
 from conceptnet_lite import Label, Language
 
 english = Language.get(name='en')
-cat_concepts = Label.get(text='cat', language=english).concepts  #
+cat_concepts = Label.get(text='cat', language=english).concepts  
 for c in cat_concepts:
     print("    Concept URI:", c.uri)
     print("    Concept text:", c.text)
@@ -204,7 +204,7 @@ You can also query the relations that have a specific concept as target or sourc
 from conceptnet_lite import Language, Label
 
 english = Language.get(name='en')
-concepts = Label.get(text='introvert', language=english).concepts  #
+concepts = Label.get(text='introvert', language=english).concepts  
 for c in concepts:
     print("    Concept text:", c.text)
     if c.edges_out:
@@ -234,7 +234,7 @@ for c in concepts:
 ...
 ```
 
-# Traversing all the data for a language
+## Traversing all the data for a language
 
 You can go over all concepts for a given language. For illustration, let us try Avestan, a "small" language with the code "ae" and vocab size of 371, according to the [ConceptNet language statistics](https://github.com/commonsense/conceptnet5/wiki/Languages).
 
