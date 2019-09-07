@@ -22,7 +22,7 @@ $ pip install conceptnet-lite
 
 ## Downloading the ConceptNet database 
 
-ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download it automatically if `db_download_url` argument is specified.
+ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
 
 A link to a compressed database for ConceptNet 5.7 will be added shortly. 
 
@@ -31,6 +31,8 @@ import conceptnet_lite
 
 conceptnet_lite.connect(db_path='/path/to/conceptnet', db_download_url="http://some/url.zip")
 ```
+
+This command both downloads the resource and connects to the database. Make sure the specified `db_path` exists and you have the right permissions.
 
 ## Building the database for a new release.
 
@@ -42,16 +44,19 @@ import conceptnet_lite
 conceptnet_lite.connect(db_path='/path/to/future/database/')
 ```
 
+This command both builds the database and connects to it. Make sure the specified `db_path` exists and you have the right permissions.
+
 ## Loading the ConceptNet database 
 
-Once you have the database file, all you need to do is pass either the full path to it or a path to the folder containing a "conceptnet.db" file to the `db_path` argument:
+Once you have the database file, all you need to do is pass either the full path to it or a path to the folder containing a "conceptnet.db" file to the `db_path` argument. If a path is passed as the only argument, it is interpreted as `db_path` argument value.
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect(db_path='/path/to/conceptnet.db')
+conceptnet_lite.connect('/path/to/conceptnet.db')
 ```
 
+If no path is specified, `conceptnet-lite` will trigger the process of building the database from the ConceptNet assertions file (see above), and place it in the current working directory.
 
 ## Accessing concepts
 
