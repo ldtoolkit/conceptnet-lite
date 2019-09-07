@@ -20,43 +20,51 @@ To install `conceptnet-lite` use `pip`:
 $ pip install conceptnet-lite
 ```
 
-## Downloading the ConceptNet database 
+## Connecting to the database
 
-ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file, but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
+Before you can use `conceptnet-lite`, you will need to obtain ConceptNet dabase file. You have two options: download pre-made one or build it yourself from the raw ConceptNet assertions file.
+
+### Downloading the ConceptNet database 
+
+ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file (see below), but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
 
 A link to a compressed database for ConceptNet 5.7 will be added shortly. 
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect(db_path='/path/to/conceptnet', db_download_url="http://some/url.zip")
+conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url="http://some/url.zip")
 ```
 
-This command both downloads the resource and connects to the database. Make sure the specified `db_path` exists and you have the right permissions.
+This command both downloads the resource and connects to the database. If path specified as the first argument does not exist, it will be created (unless there is a permissions problem). Note that the database file is quite large (over 9 Gb). 
 
-## Building the database for a new release.
+### Building the database for a new release.
 
 If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
 
-```python
-import conceptnet_lite
-
-conceptnet_lite.connect(db_path='/path/to/future/database/')
-```
-
-This command both builds the database and connects to it. Make sure the specified `db_path` exists and you have the right permissions.
-
-## Loading the ConceptNet database 
-
-Once you have the database file, all you need to do is pass either the full path to it or a path to the folder containing a "conceptnet.db" file to the `db_path` argument. If a path is passed as the only argument, it is interpreted as `db_path` argument value.
+If you provide a path, this is where the database will be built. Note that the database file is quite large (over 9 Gb). 
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect('/path/to/conceptnet.db')
+conceptnet_lite.connect("/path/to/future/conceptnet")
 ```
 
-If no path is specified, `conceptnet-lite` will trigger the process of building the database from the ConceptNet assertions file (see above), and place it in the current working directory.
+If the specified does not exist, it will be created (unless there is a permissions problem). If no path is specified, and no database file is not found in the current working directory, `conceptnet-lite` will attempt to build one in the current working directory. 
+
+Once the database is built, `conceptnet-lite` will connect to it automatically.
+
+### Loading the ConceptNet database 
+
+Once you have the database file, all you need to do is to pass the path to it to the `.connect()` method.
+
+```python
+import conceptnet_lite
+
+conceptnet_lite.connect("/path/to/conceptnet.db")
+```
+
+If no path is specified, `conceptnet-lite` will check if a database file exists in the current working directory. If it is not found, it will trigger the process of building the database from the ConceptNet assertions file (see above), and place it in the current working directory.
 
 ## Accessing concepts
 
