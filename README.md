@@ -12,7 +12,13 @@ This is the official citation for ConceptNet if you use it in research:
 
 > Robyn Speer, Joshua Chin, and Catherine Havasi. 2017. "ConceptNet 5.5: An Open Multilingual Graph of General Knowledge." In proceedings of AAAI 31.
 
-The basic usage of `conceptnet-lite` library is as follows.
+## Installation
+
+To install `conceptnet-lite` use `pip`:
+
+```shell
+$ pip install conceptnet-lite
+```
 
 ## Downloading the ConceptNet database 
 
