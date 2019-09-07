@@ -9,10 +9,10 @@ from typing import Optional, Generator, Tuple
 from uuid import uuid4
 
 import lmdb
+from multithread import Downloader
 from tqdm import tqdm
 from peewee import DatabaseProxy, Model, TextField, ForeignKeyField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
-from pySmartDL import SmartDL
 
 from conceptnet_lite.utils import PathOrStr, _to_snake_case
 
@@ -162,6 +162,10 @@ CONCEPTNET_EDGE_COUNT = 34074917
 CONCEPTNET_DB_NAME = 'conceptnet.db'
 
 
+def _get_download_destination_path(dir_path: Path, url: str) -> Path:
+    return dir_path / url.rsplit('/')[-1]
+
+
 def download_dump(
     url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
     out_dir_path: PathOrStr = Path.cwd(),
@@ -174,7 +178,10 @@ def download_dump(
     """
 
     print("Download compressed dump")
-    downloader = SmartDL(url, str(out_dir_path))
+    compressed_dump_path = _get_download_destination_path(out_dir_path, url)
+    if compressed_dump_path.is_file():
+        raise FileExistsError(17, "File already exists", str(compressed_dump_path))
+    downloader = Downloader(url, compressed_dump_path)
     downloader.start()
 
 
@@ -189,8 +196,8 @@ def extract_compressed_dump(
           delete_compressed_dump: Delete compressed dump after extraction.
     """
 
+    dump_path = Path(compressed_dump_path).with_suffix('')
     try:
-        dump_path = Path(compressed_dump_path).with_suffix('')
         with gzip.open(str(compressed_dump_path), 'rb') as f_in:
             with open(str(dump_path), 'wb') as f_out:
                 print("Extract compressed dump (this can take a few minutes)")
@@ -419,7 +426,7 @@ def prepare_db(
 
     print("Prepare database")
     dump_dir_path = Path(dump_dir_path).expanduser().resolve()
-    compressed_dump_path = dump_dir_path / Path(CONCEPTNET_DUMP_DOWNLOAD_URL.rpartition('/')[-1])
+    compressed_dump_path = _get_download_destination_path(dump_dir_path, CONCEPTNET_DUMP_DOWNLOAD_URL)
     dump_path = compressed_dump_path.with_suffix('')
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -471,10 +478,16 @@ def download_db(url: str, db_path: PathOrStr = CONCEPTNET_DB_NAME, delete_compre
 
     print("Download compressed database")
     db_path = Path(db_path).expanduser().resolve()
-    downloader = SmartDL(url, str(db_path.parent))
-    compressed_db_path = Path(downloader.dest)
+    if db_path.is_dir():
+        db_path = _generate_db_path(db_path)
+        if db_path.is_file():
+            raise FileExistsError(17, "File already exists", str(db_path))
+    compressed_db_path = _get_download_destination_path(db_path.parent, url)
+    if compressed_db_path.is_file():
+        raise FileExistsError(17, "File already exists", str(compressed_db_path))
+    downloader = Downloader(url, compressed_db_path)
+    downloader.start()
     try:
-        downloader.start()
         with zipfile.ZipFile(str(compressed_db_path), 'r') as zip_f:
             print("Extract compressed database (this can take a few minutes)")
             zip_f.extractall(db_path.parent)
