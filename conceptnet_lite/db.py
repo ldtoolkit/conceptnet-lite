@@ -293,8 +293,8 @@ def load_dump_to_db(
         if not dump_path.is_file():
             raise FileNotFoundError(2, 'No such file', str(dump_path))
         print('Dump normalization')
-        edges = edges_from_dump_by_parts_generator(count=edge_count)
-        for i, (relation_uri, start_uri, end_uri, _) in tqdm(enumerate(edges), total=edge_count):
+        edges = enumerate(edges_from_dump_by_parts_generator(count=edge_count))
+        for i, (relation_uri, start_uri, end_uri, _) in tqdm(edges, unit=' edges', total=edge_count):
             normalize_relation()
             normalize_concept(start_uri)
             normalize_concept(end_uri)
@@ -359,7 +359,7 @@ def load_dump_to_db(
         print('Dump insertion')
         relation_i, language_i, label_i, concept_i, edge_i = 5 * [1]
         edges = edges_from_dump_by_parts_generator(count=edge_count)
-        progress_bar = tqdm(total=edge_count)
+        progress_bar = tqdm(unit=' edges', total=edge_count)
         finished = False
         while not finished:
             edge_count_per_insert = 1000000
