@@ -47,7 +47,7 @@ If you provide a path, this is where the database will be built. Note that the d
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect("/path/to/future/conceptnet")
+conceptnet_lite.connect("/path/to/conceptnet.db")
 ```
 
 If the specified does not exist, it will be created (unless there is a permissions problem). If no path is specified, and no database file is not found in the current working directory, `conceptnet-lite` will attempt to build one in the current working directory. 
