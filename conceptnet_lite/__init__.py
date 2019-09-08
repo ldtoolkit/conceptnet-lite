@@ -63,50 +63,62 @@ def connect(
             )
 
 
-def edges_from(start_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
+def edges_from(
+        start_concepts: Iterable[Concept],
+        relation: Optional[Relation] = None,
+        same_language: bool = False,
+) -> peewee.BaseModelSelect:
+    start_concepts = list(start_concepts)
+    result = Edge.select().where(Edge.start.in_(start_concepts))
+    if relation is not None:
+        result = result.where(Edge.relation == relation)
     if same_language:
         ConceptAlias = Concept.alias()
-        start_concepts = list(start_concepts)
-        return (Edge
-                .select()
-                .join(Concept, on=(Concept.id == Edge.start))
-                .where(Concept.id.in_(start_concepts))
-                .switch(Edge)
-                .join(ConceptAlias, on=(ConceptAlias.id == Edge.end))
-                .join(Label)
-                .join(Language)
-                .where(Language.id == start_concepts[0].label.language))
-    else:
-        return Edge.select().where(Edge.start.in_(start_concepts))
+        result = (result
+                  .join(ConceptAlias, on=(ConceptAlias.id == Edge.end))
+                  .join(Label)
+                  .join(Language)
+                  .where(Language.id == start_concepts[0].label.language))
+    return result
 
 
-def edges_to(end_concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
+def edges_to(
+        end_concepts: Iterable[Concept],
+        relation: Optional[Relation] = None,
+        same_language: bool = False,
+) -> peewee.BaseModelSelect:
+    end_concepts = list(end_concepts)
+    result = Edge.select().where(Edge.end.in_(end_concepts))
+    if relation is not None:
+        result = result.where(Edge.relation == relation)
     if same_language:
         ConceptAlias = Concept.alias()
-        end_concepts = list(end_concepts)
-        return (Edge
-                .select()
-                .join(Concept, on=(Concept.id == Edge.end))
-                .where(Concept.id.in_(end_concepts))
-                .switch(Edge)
-                .join(ConceptAlias, on=(ConceptAlias.id == Edge.start))
-                .join(Label)
-                .join(Language)
-                .where(Language.id == end_concepts[0].label.language))
-    else:
-        return Edge.select().where(Edge.end.in_(end_concepts))
+        result = (result
+                  .join(ConceptAlias, on=(ConceptAlias.id == Edge.start))
+                  .join(Label)
+                  .join(Language)
+                  .where(Language.id == end_concepts[0].label.language))
+    return result
 
 
-def edges_for(concepts: Iterable[Concept], same_language: bool = False) -> peewee.BaseModelSelect:
-    return edges_from(concepts, same_language=same_language) | edges_to(concepts, same_language=same_language)
+def edges_for(
+        concepts: Iterable[Concept],
+        relation: Optional[Relation] = None,
+        same_language: bool = False,
+) -> peewee.BaseModelSelect:
+    return (edges_from(concepts, relation=relation, same_language=same_language)
+            | edges_to(concepts, relation=relation, same_language=same_language))
 
 
 def edges_between(
         start_concepts: Iterable[Concept],
         end_concepts: Iterable[Concept],
+        relation: Optional[Relation] = None,
         two_way: bool = False,
 ) -> peewee.BaseModelSelect:
     condition = Edge.start.in_(start_concepts) & Edge.end.in_(end_concepts)
     if two_way:
         condition |= Edge.start.in_(end_concepts) & Edge.end.in_(start_concepts)
+    if relation is not None:
+        condition &= Edge.relation == relation
     return Edge.select().where(condition)
