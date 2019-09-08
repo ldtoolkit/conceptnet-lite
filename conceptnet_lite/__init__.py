@@ -14,7 +14,6 @@ def connect(
         db_download_url: Optional[str] = None,
         delete_compressed_db: bool = True,
         dump_download_url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
-        dump_dir_path: PathOrStr = '.',
         load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
         delete_dump: bool = True,
@@ -26,11 +25,10 @@ def connect(
     into database (the default option, please check if defaults are suitable for you).
 
     Args:
-        db_path: Path to the resulting database.
+        db_path: Path to the database.
         db_download_url: Link to compressed ConceptNet database.
         delete_compressed_db: Delete compressed database after extraction.
         dump_download_url: Link to compressed ConceptNet dump.
-        dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
         load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
         delete_compressed_dump: Delete compressed dump after unpacking.
         delete_dump: Delete dump after loading into database.
@@ -56,7 +54,6 @@ def connect(
             prepare_db(
                 db_path=db_path,
                 dump_download_url=dump_download_url,
-                dump_dir_path=dump_dir_path,
                 load_dump_edge_count=load_dump_edge_count,
                 delete_compressed_dump=delete_compressed_dump,
                 delete_dump=delete_dump,

@@ -399,7 +399,6 @@ def _generate_db_path(db_dir_path: Path) -> Path:
 
 def prepare_db(
         db_path: PathOrStr,
-        dump_dir_path: PathOrStr = '.',
         dump_download_url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
         load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
         delete_compressed_dump: bool = True,
@@ -412,7 +411,6 @@ def prepare_db(
 
     Args:
         db_path: Path to the resulting database.
-        dump_dir_path: Path to the dir, where to store compressed and uncompressed dumps.
         dump_download_url: Link to compressed ConceptNet dump.
         load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.
         delete_compressed_dump: Delete compressed dump after extraction.
@@ -426,12 +424,10 @@ def prepare_db(
             raise FileExistsError(17, "File already exists and it is not a valid database", str(db_path))
 
     print("Prepare database")
-    dump_dir_path = Path(dump_dir_path).expanduser().resolve()
-    compressed_dump_path = _get_download_destination_path(dump_dir_path, CONCEPTNET_DUMP_DOWNLOAD_URL)
+    compressed_dump_path = _get_download_destination_path(db_path.parent, CONCEPTNET_DUMP_DOWNLOAD_URL)
     dump_path = compressed_dump_path.with_suffix('')
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    dump_dir_path.mkdir(parents=True, exist_ok=True)
 
     load_dump_to_db_ = partial(
         load_dump_to_db,
@@ -448,7 +444,7 @@ def prepare_db(
     download_dump_ = partial(
         download_dump,
         url=dump_download_url,
-        out_dir_path=dump_dir_path,
+        out_dir_path=db_path.parent,
     )
 
     try:
