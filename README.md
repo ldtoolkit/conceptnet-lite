@@ -38,6 +38,8 @@ conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url="http://some/u
 
 This command both downloads the resource and connects to the database. If path specified as the first argument does not exist, it will be created (unless there is a permissions problem). Note that the database file is quite large (over 9 Gb). 
 
+If your internet connection is intermittent, the built-in download function may give you errors. If so, just download the file separately, unpack it to the directory of your choice and provide the path to the `.connect()` method as described below.
+
 ### Building the database for a new release.
 
 If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
