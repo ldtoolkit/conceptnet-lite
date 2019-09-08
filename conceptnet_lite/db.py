@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import lmdb
 from multithread import Downloader
+from pySmartDL import SmartDL
 from tqdm import tqdm
 from peewee import DatabaseProxy, Model, TextField, ForeignKeyField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
@@ -181,7 +182,7 @@ def download_dump(
     compressed_dump_path = _get_download_destination_path(out_dir_path, url)
     if compressed_dump_path.is_file():
         raise FileExistsError(17, "File already exists", str(compressed_dump_path))
-    downloader = Downloader(url, compressed_dump_path)
+    downloader = SmartDL(url, str(compressed_dump_path))
     downloader.start()
 
 
@@ -485,7 +486,7 @@ def download_db(url: str, db_path: PathOrStr = CONCEPTNET_DB_NAME, delete_compre
     compressed_db_path = _get_download_destination_path(db_path.parent, url)
     if compressed_db_path.is_file():
         raise FileExistsError(17, "File already exists", str(compressed_db_path))
-    downloader = Downloader(url, compressed_db_path)
+    downloader = SmartDL(url, str(compressed_db_path))
     downloader.start()
     try:
         with zipfile.ZipFile(str(compressed_db_path), 'r') as zip_f:

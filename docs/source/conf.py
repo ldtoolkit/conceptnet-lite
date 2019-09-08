@@ -25,7 +25,7 @@ copyright = '2019, LDT team'
 author = 'LDT team'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.19'
+release = '0.1.20'
 
 
 # -- General configuration ---------------------------------------------------
