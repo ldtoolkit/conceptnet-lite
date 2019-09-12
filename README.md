@@ -28,7 +28,7 @@ Before you can use `conceptnet-lite`, you will need to obtain ConceptNet dabase 
 
 ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file (see below), but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
 
-Here is a [temporary link](https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip) to a compressed database for ConceptNet 5.7. In the future ConceptNet team may provide official dumps. 
+Here is a [link](https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip) to a compressed database for ConceptNet 5.7. 
 
 ```python
 import conceptnet_lite
