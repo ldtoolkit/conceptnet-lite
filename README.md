@@ -28,15 +28,15 @@ Before you can use `conceptnet-lite`, you will need to obtain ConceptNet dabase 
 
 ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file (see below), but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
 
-A link to a compressed database for ConceptNet 5.7 will be added shortly. 
+Here is a [temporary link](https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip) to a compressed database for ConceptNet 5.7. In the future ConceptNet team may provide official dumps. 
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url="http://some/url.zip")
+conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url="https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip")
 ```
 
-This command both downloads the resource and connects to the database. If path specified as the first argument does not exist, it will be created (unless there is a permissions problem). Note that the database file is quite large (over 9 Gb). 
+This command both downloads the resource (our build for ConceptNet 5.7) and connects to the database. If path specified as the first argument does not exist, it will be created (unless there is a permissions problem). Note that the database file is quite large (over 9 Gb). 
 
 If your internet connection is intermittent, the built-in download function may give you errors. If so, just download the file separately, unpack it to the directory of your choice and provide the path to the `.connect()` method as described below.
 
@@ -295,8 +295,3 @@ for l in mylanguage.labels:
         Edge URI: /a/[/r/antonym/,/c/non/andsœlis/r/,/c/non/réttsœlis/]
 ...
 ```
-
-
-Todo:
-
-- [ ] add database file link
