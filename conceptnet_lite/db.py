@@ -9,7 +9,6 @@ from typing import Optional, Generator, Tuple
 from uuid import uuid4
 
 import lmdb
-from multithread import Downloader
 from pySmartDL import SmartDL
 from tqdm import tqdm
 from peewee import DatabaseProxy, Model, TextField, ForeignKeyField
