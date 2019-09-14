@@ -26,14 +26,14 @@ Before you can use `conceptnet-lite`, you will need to obtain ConceptNet dabase 
 
 ### Downloading the ConceptNet database 
 
-ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file (see below), but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically if `db_download_url` argument is specified.
+ConceptNet releases happen once a year. You can use `conceptnet-lite` to build your own database from the raw assertions file (see below), but if there is a pre-built file it will be faster to just get that one. `conceptnet-lite` can download and unpack it to the specified folder automatically.
 
-Here is a [link](https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip) to a compressed database for ConceptNet 5.7. 
+Here is a [link](https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip) to a compressed database for ConceptNet 5.7. This link is used automatically if you do not supply the alternative.
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url="https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip")
+conceptnet_lite.connect("/path/to/conceptnet.db")
 ```
 
 This command both downloads the resource (our build for ConceptNet 5.7) and connects to the database. If path specified as the first argument does not exist, it will be created (unless there is a permissions problem). Note that the database file is quite large (over 9 Gb). 
@@ -42,14 +42,14 @@ If your internet connection is intermittent, the built-in download function may 
 
 ### Building the database for a new release.
 
-If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes several hours, so we recommend getting the pre-built file.
+If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes a couple of hours, so we recommend getting the pre-built file.
 
-If you provide a path, this is where the database will be built. Note that the database file is quite large (over 9 Gb). 
+If you provide a path, this is where the database will be built. Note that the database file is quite large (over 9 Gb). Note that you have to pass `db_download_url=None` to force the library build the database from dump.
 
 ```python
 import conceptnet_lite
 
-conceptnet_lite.connect("/path/to/conceptnet.db")
+conceptnet_lite.connect("/path/to/conceptnet.db", db_download_url=None)
 ```
 
 If the specified does not exist, it will be created (unless there is a permissions problem). If no path is specified, and no database file is not found in the current working directory, `conceptnet-lite` will attempt to build one in the current working directory. 
@@ -66,7 +66,7 @@ import conceptnet_lite
 conceptnet_lite.connect("/path/to/conceptnet.db")
 ```
 
-If no path is specified, `conceptnet-lite` will check if a database file exists in the current working directory. If it is not found, it will trigger the process of building the database from the ConceptNet assertions file (see above), and place it in the current working directory.
+If no path is specified, `conceptnet-lite` will check if a database file exists in the current working directory. If it is not found, it will trigger the process of downloading the pre-built database (see above).
 
 ## Accessing concepts
 

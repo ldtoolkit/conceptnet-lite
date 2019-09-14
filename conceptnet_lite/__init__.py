@@ -4,6 +4,7 @@ from typing import Iterable, Optional
 import peewee
 
 from conceptnet_lite.db import CONCEPTNET_EDGE_COUNT, CONCEPTNET_DUMP_DOWNLOAD_URL, CONCEPTNET_DB_NAME
+from conceptnet_lite.db import CONCEPTNET_DB_URL
 from conceptnet_lite.db import Concept, Language, Label, Relation, RelationName, Edge
 from conceptnet_lite.db import prepare_db, _open_db, _generate_db_path, download_db
 from conceptnet_lite.utils import PathOrStr, _to_snake_case
@@ -11,7 +12,7 @@ from conceptnet_lite.utils import PathOrStr, _to_snake_case
 
 def connect(
         db_path: PathOrStr = CONCEPTNET_DB_NAME,
-        db_download_url: Optional[str] = None,
+        db_download_url: Optional[str] = CONCEPTNET_DB_URL,
         delete_compressed_db: bool = True,
         dump_download_url: str = CONCEPTNET_DUMP_DOWNLOAD_URL,
         load_dump_edge_count: int = CONCEPTNET_EDGE_COUNT,
@@ -21,12 +22,12 @@ def connect(
     """Connect to ConceptNet database.
 
     This function connects to ConceptNet database. If it does not exists, there are two options: to download ready
-    database (you should supply `db_download_url`) or to download the compressed ConceptNet dump, unpack it, load it
-    into database (the default option, please check if defaults are suitable for you).
+    database or to download the compressed ConceptNet dump, extract it, and load it
+    into database (pass `db_download_url=None` for this option).
 
     Args:
         db_path: Path to the database.
-        db_download_url: Link to compressed ConceptNet database.
+        db_download_url: Link to compressed ConceptNet database. Pass `None` to build the db from dump.
         delete_compressed_db: Delete compressed database after extraction.
         dump_download_url: Link to compressed ConceptNet dump.
         load_dump_edge_count: Number of edges to load from the beginning of the dump file. Can be useful for testing.

@@ -158,6 +158,7 @@ def _open_db(path: PathOrStr):
 # For ConceptNet 5.7:
 CONCEPTNET_DUMP_DOWNLOAD_URL = (
     'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz')
+CONCEPTNET_DB_URL = 'https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip'
 CONCEPTNET_EDGE_COUNT = 34074917
 CONCEPTNET_DB_NAME = 'conceptnet.db'
 
@@ -405,7 +406,7 @@ def prepare_db(
 ):
     """Prepare ConceptNet database.
 
-    This function downloads the compressed ConceptNet dump, unpacks it, and loads it into database. First two steps
+    This function downloads the compressed ConceptNet dump, extracts it, and loads it into database. First two steps
     are optional, and are executed only if needed.
 
     Args:
@@ -463,7 +464,11 @@ def prepare_db(
             dump_path.unlink()
 
 
-def download_db(url: str, db_path: PathOrStr = CONCEPTNET_DB_NAME, delete_compressed_db: bool = True) -> None:
+def download_db(
+        url: str = CONCEPTNET_DB_URL,
+        db_path: PathOrStr = CONCEPTNET_DB_NAME,
+        delete_compressed_db: bool = True
+) -> None:
     """Download compressed ConceptNet dump and extract it.
 
     Args:
