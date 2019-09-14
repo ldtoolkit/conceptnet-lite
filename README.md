@@ -44,7 +44,7 @@ If your internet connection is intermittent, the built-in download function may 
 
 If a database file is not found in the folder specified in the `db_path` argument, `conceptnet-lite` will attempt to automatically download the raw assertions file from [here](https://github.com/commonsense/conceptnet5/wiki/Downloads) and build the database. This takes a couple of hours, so we recommend getting the pre-built file.
 
-If you provide a path, this is where the database will be built. Note that the database file is quite large (over 9 Gb). Note that you have to pass `db_download_url=None` to force the library build the database from dump.
+If you provide a path, this is where the database will be built. Note that the database file is quite large (over 9 Gb). Note that you need to pass `db_download_url=None` to force the library build the database from dump.
 
 ```python
 import conceptnet_lite
@@ -100,10 +100,9 @@ You can limit the languages to search for matches. Label.get() takes an optional
 List of available languages and their codes are described [here](https://github.com/commonsense/conceptnet5/wiki/Languages).
 
 ```python
-from conceptnet_lite import Label, Language
+from conceptnet_lite import Label
 
-english = Language.get(name='en')
-cat_concepts = Label.get(text='cat', language=english).concepts  
+cat_concepts = Label.get(text='cat', language='en').concepts  
 for c in cat_concepts:
     print("    Concept URI:", c.uri)
     print("    Concept text:", c.text)
@@ -134,11 +133,10 @@ To retrieve the set of relations between two concepts, you need to create the co
 Some ConceptNet relations are symmetrical: for example, the antonymy between *white* and *black* works both ways. Some relations are asymmetrical: e.g. the relation between *cat* and *mammal* is either hyponymy or hyperonymy, depending on the direction. The `two_way` argument lets you choose whether the query should be symmetrical or not.
 
 ```python
-from conceptnet_lite import Label, Language, edges_between
+from conceptnet_lite import Label, edges_between
 
-english = Language.get(name='en')
-introvert_concepts = Label.get(text='introvert', language=english).concepts
-extrovert_concepts = Label.get(text='extrovert', language=english).concepts
+introvert_concepts = Label.get(text='introvert', language='en').concepts
+extrovert_concepts = Label.get(text='extrovert', language='en').concepts
 for e in edges_between(introvert_concepts, extrovert_concepts, two_way=False):
     print("  Edge URI:", e.uri)
     print("  Edge name:", e.relation.name)
@@ -180,10 +178,9 @@ for e in edges_between(introvert_concepts, extrovert_concepts, two_way=False):
 You can also retrieve all relations between a given concepts and all other concepts, with the same options as above:
 
 ```python
-from conceptnet_lite import Label, Language, edges_for
+from conceptnet_lite import Label, edges_for
 
-english = Language.get(name='en')
-for e in edges_for(Label.get(text='introvert', language=english).concepts, same_language=True):
+for e in edges_for(Label.get(text='introvert', language='en').concepts, same_language=True):
     print(e.start.text, "::", e.end.text, "|", e.relation.name)
 ```
 ```console
@@ -222,10 +219,9 @@ introvertito :: introvert | synonym
 You can also query the relations that have a specific concept as target or source. This is achieved with `concept.edges_out` and `concept.edges_in`, as follows:
 
 ```python
-from conceptnet_lite import Language, Label
+from conceptnet_lite import Label
 
-english = Language.get(name='en')
-concepts = Label.get(text='introvert', language=english).concepts  
+concepts = Label.get(text='introvert', language='en').concepts  
 for c in concepts:
     print("    Concept text:", c.text)
     if c.edges_out:
@@ -295,3 +291,16 @@ for l in mylanguage.labels:
         Edge URI: /a/[/r/antonym/,/c/non/andsœlis/r/,/c/non/réttsœlis/]
 ...
 ```
+
+## Accessing Concepts and Edges by URI
+
+You can access concept and edge ORM objects directly by providing a desired ConceptNet URI. This is done as follows:
+
+```python
+from conceptnet_lite import Concept, Edge
+
+edge_object = Edge.get(start='/c/en/example')
+concept_object = Concept.get(start='/c/en/example')
+```
+
+See the `conceptnet-lite.db` module for the list of available methods. 
