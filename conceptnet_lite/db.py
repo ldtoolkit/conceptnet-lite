@@ -171,6 +171,16 @@ class Edge(_BaseModel):
     def __str__(self):
         return self.uri
 
+    @classmethod
+    def get(cls, *query, **filters):
+        if isinstance(filters.get('relation'), str):
+            filters['relation'] = Relation.get(name=filters['relation'])
+        if isinstance(filters.get('start'), str):
+            filters['start'] = Concept.get(uri=filters['start'])
+        if isinstance(filters.get('end'), str):
+            filters['end'] = Concept.get(uri=filters['end'])
+        return super().get(*query, **filters)
+
     @property
     def uri(self) -> str:
         return f'/a/[{self.relation.uri}/,{self.start.uri}/,{self.end.uri}/]'
