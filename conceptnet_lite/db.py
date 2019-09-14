@@ -101,6 +101,12 @@ class Label(_BaseModel):
     text = TextField(index=True)
     language = ForeignKeyField(Language, backref='labels')
 
+    @classmethod
+    def get(cls, *query, **filters):
+        if isinstance(filters.get('language'), str):
+            filters['language'] = Language.get(name=filters.get('language'))
+        return super().get(*query, **filters)
+
 
 class Concept(_BaseModel):
     """Concept ORM class.
