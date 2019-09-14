@@ -75,6 +75,9 @@ class Relation(_BaseModel):
 
     name = TextField(unique=True)
 
+    def __str__(self):
+        return self.uri
+
     @property
     def uri(self) -> str:
         return f'/r/{self.name}'
@@ -88,6 +91,9 @@ class Language(_BaseModel):
 
     name = TextField(unique=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Label(_BaseModel):
     """Label ORM class.
@@ -100,6 +106,9 @@ class Label(_BaseModel):
 
     text = TextField(index=True)
     language = ForeignKeyField(Language, backref='labels')
+
+    def __str__(self):
+        return f'{self.text} ({self.language.name})'
 
     @classmethod
     def get(cls, *query, **filters):
@@ -119,6 +128,9 @@ class Concept(_BaseModel):
 
     label = ForeignKeyField(Label, backref='concepts')
     sense_label = TextField()
+
+    def __str__(self):
+        return self.uri
 
     @classmethod
     def get(cls, *query, **filters):
@@ -155,6 +167,9 @@ class Edge(_BaseModel):
     start = ForeignKeyField(Concept, backref='edges_out')
     end = ForeignKeyField(Concept, backref='edges_in')
     etc = JSONField()
+
+    def __str__(self):
+        return self.uri
 
     @property
     def uri(self) -> str:
