@@ -300,7 +300,9 @@ You can access concept and edge ORM objects directly by providing a desired Conc
 from conceptnet_lite import Concept, Edge
 
 edge_object = Edge.get(start='/c/en/example')
-concept_object = Concept.get(start='/c/en/example')
+edge_example_with_relation = Edge.get(start='/c/en/introvert/n',
+                                      relation='antonym')
+concept_object = Concept.get(uri='/c/en/example')
 ```
 
 See the `conceptnet-lite.db` module for the list of available methods. 
