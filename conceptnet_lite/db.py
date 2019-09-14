@@ -120,6 +120,15 @@ class Concept(_BaseModel):
     label = ForeignKeyField(Label, backref='concepts')
     sense_label = TextField()
 
+    @classmethod
+    def get(cls, *query, **filters):
+        if 'uri' in filters:
+            split_uri = filters['uri'].split('/', maxsplit=4)
+            label = Label.get(text=split_uri[3], language=split_uri[2])
+            sense_label = '' if len(split_uri) == 4 else split_uri[4]
+            return Concept.get(label=label, sense_label=sense_label)
+        return super().get(*query, **filters)
+
     @property
     def uri(self) -> str:
         ending = f'/{self.sense_label}' if self.sense_label else ''
