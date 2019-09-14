@@ -104,7 +104,7 @@ class Label(_BaseModel):
     @classmethod
     def get(cls, *query, **filters):
         if isinstance(filters.get('language'), str):
-            filters['language'] = Language.get(name=filters.get('language'))
+            filters['language'] = Language.get(name=filters['language'])
         return super().get(*query, **filters)
 
 
