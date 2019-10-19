@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 import peewee
 
@@ -61,15 +61,25 @@ def connect(
             )
 
 
+def _get_where_clause_for_relation(relation: Optional[Union[Relation, str]] = None) -> Union[peewee.Expression, bool]:
+    if relation is None:
+        return True
+    else:
+        if isinstance(relation, str):
+            relation = Relation.get(name=relation)
+        return Edge.relation == relation
+
+
 def edges_from(
         start_concepts: Iterable[Concept],
-        relation: Optional[Relation] = None,
+        relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.BaseModelSelect:
     start_concepts = list(start_concepts)
-    result = Edge.select().where(Edge.start.in_(start_concepts))
-    if relation is not None:
-        result = result.where(Edge.relation == relation)
+    result = Edge.select().where(
+        Edge.start.in_(start_concepts) &
+        _get_where_clause_for_relation(relation)
+    )
     if same_language:
         ConceptAlias = Concept.alias()
         result = (result
@@ -82,13 +92,14 @@ def edges_from(
 
 def edges_to(
         end_concepts: Iterable[Concept],
-        relation: Optional[Relation] = None,
+        relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.BaseModelSelect:
     end_concepts = list(end_concepts)
-    result = Edge.select().where(Edge.end.in_(end_concepts))
-    if relation is not None:
-        result = result.where(Edge.relation == relation)
+    result = Edge.select().where(
+        Edge.end.in_(end_concepts) &
+        _get_where_clause_for_relation(relation)
+    )
     if same_language:
         ConceptAlias = Concept.alias()
         result = (result
@@ -101,7 +112,7 @@ def edges_to(
 
 def edges_for(
         concepts: Iterable[Concept],
-        relation: Optional[Relation] = None,
+        relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.BaseModelSelect:
     return (edges_from(concepts, relation=relation, same_language=same_language)
@@ -111,12 +122,11 @@ def edges_for(
 def edges_between(
         start_concepts: Iterable[Concept],
         end_concepts: Iterable[Concept],
-        relation: Optional[Relation] = None,
+        relation: Optional[Union[Relation, str]] = None,
         two_way: bool = False,
 ) -> peewee.BaseModelSelect:
     condition = Edge.start.in_(start_concepts) & Edge.end.in_(end_concepts)
     if two_way:
         condition |= Edge.start.in_(end_concepts) & Edge.end.in_(start_concepts)
-    if relation is not None:
-        condition &= Edge.relation == relation
+    condition &= _get_where_clause_for_relation(relation)
     return Edge.select().where(condition)
