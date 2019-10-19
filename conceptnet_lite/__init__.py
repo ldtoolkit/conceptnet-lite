@@ -74,7 +74,7 @@ def edges_from(
         start_concepts: Iterable[Concept],
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
-) -> peewee.BaseModelSelect:
+) -> peewee.ModelSelect:
     start_concepts = list(start_concepts)
     result = (Edge.select()
               .where(Edge.start.in_(start_concepts) & _get_where_clause_for_relation(relation)))
@@ -126,7 +126,7 @@ def edges_between(
         end_concepts: Iterable[Concept],
         relation: Optional[Union[Relation, str]] = None,
         two_way: bool = False,
-) -> peewee.BaseModelSelect:
+) -> peewee.ModelSelect:
     condition = Edge.start.in_(start_concepts) & Edge.end.in_(end_concepts)
     if two_way:
         condition |= Edge.start.in_(end_concepts) & Edge.end.in_(start_concepts)
