@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
@@ -70,25 +71,57 @@ def _get_where_clause_for_relation(relation: Optional[Union[Relation, str]] = No
         return Edge.relation == relation
 
 
+class PartOfEdge(Enum):
+    ANY = 'any'
+    START = 'start'
+    END = 'end'
+
+
+def edges(
+        part_of_edge: PartOfEdge,
+        concepts: Iterable[Concept],
+        relation: Optional[Union[Relation, str]] = None,
+        same_language: bool = False,
+) -> peewee.ModelSelect:
+    concepts = list(concepts)
+    ConceptAlias = Concept.alias()
+    if part_of_edge == PartOfEdge.ANY:
+        in_concepts_where_clause = Edge.start.in_(concepts) | Edge.end.in_(concepts)
+        concept_alias_join_on = (
+            (Edge.end.in_(concepts) & (ConceptAlias.id == Edge.start)) |
+            (Edge.start.in_(concepts) & (ConceptAlias.id == Edge.end)))
+    elif part_of_edge == PartOfEdge.START:
+        in_concepts_where_clause = Edge.start.in_(concepts)
+        concept_alias_join_on = ConceptAlias.id == Edge.end
+    elif part_of_edge == PartOfEdge.END:
+        in_concepts_where_clause = Edge.end.in_(concepts)
+        concept_alias_join_on = ConceptAlias.id == Edge.start
+    else:
+        assert False, "Unknown part_of_edge"
+    result = (Edge.select()
+              .where(in_concepts_where_clause & _get_where_clause_for_relation(relation)))
+    if same_language:
+        cte = result.cte('result')
+        result = (Edge.select()
+                  .join(cte, on=(Edge.id == cte.c.id))
+                  .join(ConceptAlias, on=concept_alias_join_on)
+                  .join(Label)
+                  .join(Language)
+                  .where(Language.id == concepts[0].label.language)
+                  .with_cte(cte))
+    return result
+
+
 def edges_from(
         start_concepts: Iterable[Concept],
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.ModelSelect:
-    start_concepts = list(start_concepts)
-    result = (Edge.select()
-              .where(Edge.start.in_(start_concepts) & _get_where_clause_for_relation(relation)))
-    if same_language:
-        cte = result.cte('result')
-        ConceptAlias = Concept.alias()
-        result = (Edge.select()
-                  .join(cte, on=(Edge.id == cte.c.id))
-                  .join(ConceptAlias, on=(ConceptAlias.id == Edge.end))
-                  .join(Label)
-                  .join(Language)
-                  .where(Language.id == start_concepts[0].label.language)
-                  .with_cte(cte))
-    return result
+    return edges(
+        part_of_edge=PartOfEdge.START,
+        concepts=start_concepts,
+        relation=relation,
+        same_language=same_language)
 
 
 def edges_to(
@@ -96,20 +129,11 @@ def edges_to(
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.ModelSelect:
-    end_concepts = list(end_concepts)
-    result = (Edge.select()
-              .where(Edge.end.in_(end_concepts) & _get_where_clause_for_relation(relation)))
-    if same_language:
-        cte = result.cte('result')
-        ConceptAlias = Concept.alias()
-        result = (Edge.select()
-                  .join(cte, on=(Edge.id == cte.c.id))
-                  .join(ConceptAlias, on=(ConceptAlias.id == Edge.start))
-                  .join(Label)
-                  .join(Language)
-                  .where(Language.id == end_concepts[0].label.language)
-                  .with_cte(cte))
-    return result
+    return edges(
+        part_of_edge=PartOfEdge.END,
+        concepts=end_concepts,
+        relation=relation,
+        same_language=same_language)
 
 
 def edges_for(
@@ -117,8 +141,11 @@ def edges_for(
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
 ) -> peewee.ModelSelect:
-    return (edges_from(concepts, relation=relation, same_language=same_language)
-            | edges_to(concepts, relation=relation, same_language=same_language))
+    return edges(
+        part_of_edge=PartOfEdge.ANY,
+        concepts=concepts,
+        relation=relation,
+        same_language=same_language)
 
 
 def edges_between(
