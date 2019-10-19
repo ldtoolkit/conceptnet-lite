@@ -76,17 +76,18 @@ def edges_from(
         same_language: bool = False,
 ) -> peewee.BaseModelSelect:
     start_concepts = list(start_concepts)
-    result = Edge.select().where(
-        Edge.start.in_(start_concepts) &
-        _get_where_clause_for_relation(relation)
-    )
+    result = (Edge.select()
+              .where(Edge.start.in_(start_concepts) & _get_where_clause_for_relation(relation)))
     if same_language:
+        cte = result.cte('result')
         ConceptAlias = Concept.alias()
-        result = (result
+        result = (Edge.select()
+                  .join(cte, on=(Edge.id == cte.c.id))
                   .join(ConceptAlias, on=(ConceptAlias.id == Edge.end))
                   .join(Label)
                   .join(Language)
-                  .where(Language.id == start_concepts[0].label.language))
+                  .where(Language.id == start_concepts[0].label.language)
+                  .with_cte(cte))
     return result
 
 
@@ -94,19 +95,20 @@ def edges_to(
         end_concepts: Iterable[Concept],
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
-) -> peewee.BaseModelSelect:
+) -> peewee.ModelSelect:
     end_concepts = list(end_concepts)
-    result = Edge.select().where(
-        Edge.end.in_(end_concepts) &
-        _get_where_clause_for_relation(relation)
-    )
+    result = (Edge.select()
+              .where(Edge.end.in_(end_concepts) & _get_where_clause_for_relation(relation)))
     if same_language:
+        cte = result.cte('result')
         ConceptAlias = Concept.alias()
-        result = (result
+        result = (Edge.select()
+                  .join(cte, on=(Edge.id == cte.c.id))
                   .join(ConceptAlias, on=(ConceptAlias.id == Edge.start))
                   .join(Label)
                   .join(Language)
-                  .where(Language.id == end_concepts[0].label.language))
+                  .where(Language.id == end_concepts[0].label.language)
+                  .with_cte(cte))
     return result
 
 
@@ -114,7 +116,7 @@ def edges_for(
         concepts: Iterable[Concept],
         relation: Optional[Union[Relation, str]] = None,
         same_language: bool = False,
-) -> peewee.BaseModelSelect:
+) -> peewee.ModelSelect:
     return (edges_from(concepts, relation=relation, same_language=same_language)
             | edges_to(concepts, relation=relation, same_language=same_language))
 
