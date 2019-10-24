@@ -18,3 +18,8 @@ conceptnet\_lite.db module
    :members:
    :undoc-members:
    :show-inheritance:
+
+database schema
+---------------
+
+.. image:: _static/erd.svg
