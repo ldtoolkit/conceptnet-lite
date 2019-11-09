@@ -105,10 +105,11 @@ class Label(_BaseModel):
     """
 
     text = TextField(index=True)
-    language = ForeignKeyField(Language, backref='labels')
+    language = ForeignKeyField(Language, backref='labels', null=True)
 
     def __str__(self):
-        return f'{self.text} ({self.language.name})'
+        language_postfix = ' ({self.language.name})' if self.language is not None else ''
+        return f'{self.text}{language_postfix}'
 
     @classmethod
     def get(cls, *query, **filters):
@@ -143,8 +144,11 @@ class Concept(_BaseModel):
 
     @property
     def uri(self) -> str:
-        ending = f'/{self.sense_label}' if self.sense_label else ''
-        return f'/c/{self.language.name}/{self.text}{ending}'
+        if self.sense_label != 'url':
+            ending = f'/{self.sense_label}' if self.sense_label else ''
+            return f'/c/{self.language.name}/{self.text}{ending}'
+        else:
+            return f'{self.text}'
 
     @property
     def language(self) -> Language:
@@ -285,12 +289,11 @@ def load_dump_to_db(
     def unpack_ints(buffer: bytes) -> Tuple[int, ...]:
         return struct.unpack(get_struct_format(len(buffer) // 8), buffer)
 
-    def relation_in_bytes(relation_uri: str) -> bytes:
-        relation_name = extract_relation_name(relation_uri)
-        return relation_name.encode('utf8')
-
-    def language_and_label_in_bytes(concept_uri: str) -> Tuple[bytes, bytes]:
-        return tuple(x.encode('utf8') for x in concept_uri.split('/', maxsplit=4)[2:4])[:2]
+    def language_and_label_in_bytes(concept_uri: str, is_external_url: bool) -> Tuple[bytes, bytes]:
+        if not is_external_url:
+            return tuple(x.encode('utf8') for x in concept_uri.split('/', maxsplit=4)[2:4])[:2]
+        else:
+            return b'', concept_uri.encode('utf8')
 
     def normalize() -> None:
         """Normalize dump before loading into database using lmdb."""
@@ -298,23 +301,25 @@ def load_dump_to_db(
         def normalize_relation() -> None:
             nonlocal relation_i
 
-            relation_b = relation_in_bytes(relation_uri=relation_uri)
+            name = extract_relation_name(relation_uri)
+            relation_b = name.encode('utf8')
             relation_exists = txn.get(relation_b, db=relation_db) is not None
             if not relation_exists:
                 relation_i += 1
                 relation_i_b = pack_ints(relation_i)
                 txn.put(relation_b, relation_i_b, db=relation_db)
 
-        def normalize_concept(uri: str) -> None:
+        def normalize_concept(uri: str, is_external_url: bool = False) -> None:
             nonlocal language_i, label_i, concept_i
 
-            language_b, label_b = language_and_label_in_bytes(concept_uri=uri)
+            language_b, label_b = language_and_label_in_bytes(concept_uri=uri, is_external_url=is_external_url)
 
-            language_id_b = txn.get(language_b, db=language_db)
-            if language_id_b is None:
-                language_i += 1
-                language_id_b = pack_ints(language_i)
-                txn.put(language_b, language_id_b, db=language_db)
+            if not is_external_url:
+                language_id_b = txn.get(language_b, db=language_db)
+                if language_id_b is None:
+                    language_i += 1
+                    language_id_b = pack_ints(language_i)
+                    txn.put(language_b, language_id_b, db=language_db)
 
             label_language_b = label_b + b'/' + language_b
             label_id_b = txn.get(label_language_b, db=label_db)
@@ -338,7 +343,8 @@ def load_dump_to_db(
         for i, (relation_uri, start_uri, end_uri, _) in tqdm(edges, unit=' edges', total=edge_count):
             normalize_relation()
             normalize_concept(start_uri)
-            normalize_concept(end_uri)
+            is_end_uri_external_url = extract_relation_name(relation_uri) == RelationName.EXTERNAL_URL
+            normalize_concept(end_uri, is_external_url=is_end_uri_external_url)
 
     def insert() -> None:
         """Load dump from CSV and lmdb database into database."""
@@ -346,34 +352,37 @@ def load_dump_to_db(
         def insert_objects_from_edge():
             nonlocal edge_i
 
-            def insert_relation() -> int:
+            def insert_relation() -> Tuple[int, bool]:
                 nonlocal relation_i
 
-                relation_b = relation_in_bytes(relation_uri=relation_uri)
+                name = extract_relation_name(relation_uri)
+                relation_b = name.encode('utf8')
                 result_id, = unpack_ints(buffer=txn.get(relation_b, db=relation_db))
                 if result_id == relation_i:
-                    name = relation_b.decode('utf8')
                     db.execute_sql('insert into relation (name) values (?)', (name, ))
                     relation_i += 1
-                return result_id
+                return result_id, name == RelationName.EXTERNAL_URL
 
-            def insert_concept(uri: str) -> int:
+            def insert_concept(uri: str, is_external_url: bool = False) -> int:
                 nonlocal language_i, label_i, concept_i
 
                 split_uri = uri.split('/', maxsplit=4)
 
-                language_b, label_b = language_and_label_in_bytes(concept_uri=uri)
+                language_b, label_b = language_and_label_in_bytes(concept_uri=uri, is_external_url=is_external_url)
 
-                language_id, = unpack_ints(buffer=txn.get(language_b, db=language_db))
-                if language_id == language_i:
-                    name = split_uri[2]
-                    db.execute_sql('insert into language (name) values (?)', (name, ))
-                    language_i += 1
+                if not is_external_url:
+                    language_id, = unpack_ints(buffer=txn.get(language_b, db=language_db))
+                    if language_id == language_i:
+                        name = split_uri[2]
+                        db.execute_sql('insert into language (name) values (?)', (name, ))
+                        language_i += 1
+                else:
+                    language_id = None
 
                 label_language_b = label_b + b'/' + language_b
                 label_id, = unpack_ints(buffer=txn.get(label_language_b, db=label_db))
                 if label_id == label_i:
-                    text = split_uri[3]
+                    text = split_uri[3] if not is_external_url else uri
                     params = (text, language_id)
                     db.execute_sql('insert into label (text, language_id) values (?, ?)', params)
                     label_i += 1
@@ -381,7 +390,7 @@ def load_dump_to_db(
                 concept_b = uri.encode('utf8')
                 concept_id, = unpack_ints(buffer=txn.get(concept_b, db=concept_db))
                 if concept_id == concept_i:
-                    sense_label = '' if len(split_uri) == 4 else split_uri[4]
+                    sense_label = ('' if len(split_uri) == 4 else split_uri[4]) if not is_external_url else 'url'
                     params = (label_id, sense_label)
                     db.execute_sql('insert into concept (label_id, sense_label) values (?, ?)', params)
                     concept_i += 1
@@ -391,9 +400,9 @@ def load_dump_to_db(
                 params = (relation_id, start_id, end_id, edge_etc)
                 db.execute_sql('insert into edge (relation_id, start_id, end_id, etc) values (?, ?, ?, ?)', params)
 
-            relation_id = insert_relation()
+            relation_id, is_external_url = insert_relation()
             start_id = insert_concept(uri=start_uri)
-            end_id = insert_concept(uri=end_uri)
+            end_id = insert_concept(uri=end_uri, is_external_url=is_external_url)
             insert_edge()
             edge_i += 1
 
