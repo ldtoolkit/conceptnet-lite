@@ -1,4 +1,4 @@
-# conceptnet-lite
+# conceptnet-lite [maintainance mode]
 [![License](https://img.shields.io/pypi/l/conceptnet-lite.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/conceptnet-lite.svg)
 [![PyPI](https://img.shields.io/pypi/v/conceptnet-lite.svg)](https://pypi.org/project/conceptnet-lite/)
@@ -11,6 +11,10 @@ The library comes with Apache License 2.0, and is separate from ConceptNet itsel
 This is the official citation for ConceptNet if you use it in research:
 
 > Robyn Speer, Joshua Chin, and Catherine Havasi. 2017. "ConceptNet 5.5: An Open Multilingual Graph of General Knowledge." In proceedings of AAAI 31.
+
+## Status
+
+ConceptNet was not updated since September 2021, so Conceptnet-lite won't be updated either. Please do not use it in any new projects.
 
 ## Installation
 

@@ -202,7 +202,7 @@ def _open_db(path: PathOrStr):
 # For ConceptNet 5.7:
 CONCEPTNET_DUMP_DOWNLOAD_URL = (
     'https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz')
-CONCEPTNET_DB_URL = 'https://conceptnet-lite.fra1.cdn.digitaloceanspaces.com/conceptnet.db.zip'
+CONCEPTNET_DB_URL = 'https://filedn.com/l4OYewCIMcOmtnyW43I0CuB/conceptnet.db.zip'
 CONCEPTNET_EDGE_COUNT = 34074917
 CONCEPTNET_DB_NAME = 'conceptnet.db'
 
